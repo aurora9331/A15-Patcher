@@ -248,3 +248,11 @@ jobs:
           makeLatest: true
           bodyFile: release_notes.txt
           token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Notify via Telegram
+      run: |
+        curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+        -d chat_id=@aurorax9331 \
+        -d message_thread_id=3 \
+        -d parse_mode="MarkdownV2" \
+        -d text="*🔗 [Download](https://github.com/${{ github.repository }}/releases/tag/${{ env.version }})%0A%0A \\#Sürüm  \\#${{ env.device_name }}"
