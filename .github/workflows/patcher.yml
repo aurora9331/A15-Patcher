@@ -199,9 +199,9 @@ jobs:
       run: |
         mkdir -p magisk_module/system/framework
         mkdir -p magisk_module/system/system_ext/framework
-        cp aligned_framework.jar magisk_module/system/system/framework/framework.jar
-        cp aligned_services.jar magisk_module/system/system/framework/services.jar
-        cp aligned_miui_services.jar magisk_module/system_ext/framework/miui-services.jar
+        cp aligned_framework.jar magisk_module/system/framework/framework.jar
+        cp aligned_services.jar magisk_module/system/framework/services.jar
+        cp aligned_miui_services.jar magisk_module/system/system_ext/framework/miui-services.jar
 
     - name: Create Version From Link
       run: |
