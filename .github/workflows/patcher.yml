@@ -225,11 +225,11 @@ jobs:
     - name: Zip Magisk module
       run: |
         cd magisk_module
-        zip -r ../moded_framework_services_${{ env.device_name }}_${{ env.version }}.zip *
+        zip -r ../${{ env.device_name }}_${{ env.version }}.zip *
         cd ..
         mkdir -p out
-        chmod +w moded_framework_services_${{ env.device_name }}_${{ env.version }}.zip
-        mv moded_framework_services_${{ env.device_name }}_${{ env.version }}.zip out/
+        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
+        mv ${{ env.device_name }}_${{ env.version }}.zip out/
 
     - name: Create Release Notes
       run: |
@@ -243,7 +243,7 @@ jobs:
       with:
           artifacts: out/*
           tag: ${{ env.version }}
-          name: moded_${{ env.device_name }}_${{ env.version }}
+          name: ${{ env.device_name }}_${{ env.version }}
           allowUpdates: true
           makeLatest: true
           bodyFile: release_notes.txt
