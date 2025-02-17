@@ -3,6 +3,7 @@
 - İstediğiniz sistem apk'sını yükleyebileceksiniz.
 - Sadece global HyperOS 2.0 için denendi
 - Çin sürümleri test edilmemiştir.
+- [Yeni] HyperOS 2.1 destekliyor.
 
 ## Kullanımı
 - [Bu linkten](https://github.com/aurora9331/A15-Patcher/actions/workflows/patcher.yml) sonra karşınıza run workflow seçeneği çıkacak
