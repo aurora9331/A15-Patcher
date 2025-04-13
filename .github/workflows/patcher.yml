@@ -17,11 +17,11 @@ on:
         required: true
         default: '35'
       custom_device_name:
-        description: 'Custom device name (optional)'
-        required: false
+        description: 'Custom device name'
+        required: true
       custom_version:
-        description: 'Custom version (optional)'
-        required: false
+        description: 'Custom version'
+        required: true
 
 jobs:
   build:
@@ -43,9 +43,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt full-upgrade -y
-        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2
+        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2 jq
+        pip install gdown
 
     - name: Download and validate JARs
       run: |
