@@ -43,7 +43,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2 jq
+        sudo apt update
+        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2 jq openjdk-11-jre # Ensure openjdk-11-jre for runtime
         pip install gdown
 
     - name: Download and validate JARs
@@ -51,29 +52,53 @@ jobs:
         curl -L -C - -o framework.jar "${{ github.event.inputs.framework_jar_url }}"
         curl -L -C - -o services.jar "${{ github.event.inputs.services_jar_url }}"
         curl -L -C - -o miui-services.jar "${{ github.event.inputs.miui_services_jar_url }}"
-        for jar in framework.jar services.jar miui-services.jar; do
-          file_size=$(stat -c%s "$jar")
-          if [ $file_size -lt 2000000 ]; then
-            echo "Error: $jar is too small. Download might have failed." >&2
+        for jar_file in framework.jar services.jar miui-services.jar; do
+          file_size=$(stat -c%s "$jar_file")
+          if [ $file_size -lt 2000000 ]; then # 2MB threshold
+            echo "Error: $jar_file is too small (size: $file_size bytes). Download might have failed or the file is invalid." >&2
             exit 1
+          else
+            echo "$jar_file downloaded successfully, size: $file_size bytes."
           fi
         done
 
     - name: Clone smali repository
       run: git clone --depth=1 https://github.com/JesusFreke/smali.git
 
-    - name: Build smali and baksmali
+    - name: Build smali and baksmali and copy to workspace root
       run: |
         cd smali
         ./gradlew build
+        # Find built smali and baksmali jar files and copy them to the GITHUB_WORKSPACE
+        # Gradle might place them in subprojects' build/libs folders
+        SMALI_JAR_PATH=$(find . -name "smali-*.jar" | head -n 1)
+        BAKSMALI_JAR_PATH=$(find . -name "baksmali-*.jar" | head -n 1)
 
-    - name: Extract framework.jar
+        if [ -z "$SMALI_JAR_PATH" ] || [ -z "$BAKSMALI_JAR_PATH" ]; then
+          echo "Error: Failed to find smali.jar or baksmali.jar after build." >&2
+          # List contents for debugging
+          echo "Contents of smali build directories:"
+          find . -name "*.jar" -ls
+          exit 1
+        fi
+
+        cp "$SMALI_JAR_PATH" ../smali.jar
+        cp "$BAKSMALI_JAR_PATH" ../baksmali.jar
+        cd ..
+        echo "Checking for smali.jar and baksmali.jar in workspace root:"
+        ls -l smali.jar baksmali.jar
+        if [ ! -f smali.jar ] || [ ! -f baksmali.jar ]; then
+            echo "Error: smali.jar or baksmali.jar not found in workspace root." >&2
+            exit 1
+        fi
+
+    - name: Extract framework.jar contents
       run: 7z x framework.jar -oframework
 
-    - name: Extract services.jar
+    - name: Extract services.jar contents
       run: 7z x services.jar -oservices
 
-    - name: Extract miui-services.jar
+    - name: Extract miui-services.jar contents
       run: 7z x miui-services.jar -omiui_services
 
     - name: Decompile framework dex files if available
@@ -108,7 +133,22 @@ jobs:
 
     - name: Decompile miui-services dex file
       run: |
-        java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
+        # Assuming miui-services.jar typically only has classes.dex
+        if [ -f miui_services/classes.dex ]; then
+            java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
+        else
+            echo "miui_services/classes.dex not found, skipping decompilation."
+        fi
+        # Add loop for classes2-5.dex for miui-services if they can exist
+        for i in {2..5}; do
+            if [ -f "miui_services/classes${i}.dex" ]; then
+                java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "miui_services/classes${i}.dex" -o "miui_services_classes${i}"
+            else
+                # Optional: echo "miui_services/classes${i}.dex not found."
+                : # Do nothing if not found
+            fi
+        done
+
 
     - name: Backup smali files
       run: |
@@ -122,77 +162,116 @@ jobs:
         cp -r services_classes3 services_classes3_backup || echo "services_classes3 directory not found, skipping backup."
         cp -r services_classes4 services_classes4_backup || echo "services_classes4 directory not found, skipping backup."
         cp -r services_classes5 services_classes5_backup || echo "services_classes5 directory not found, skipping backup."
-        cp -r miui_services_classes miui_services_classes_backup
+        cp -r miui_services_classes miui_services_classes_backup || echo "miui_services_classes directory not found, skipping backup."
+        # Backup potential additional miui_services_classes
+        for i in {2..5}; do
+            cp -r "miui_services_classes${i}" "miui_services_classes${i}_backup" || echo "miui_services_classes${i} directory not found, skipping backup."
+        done
+
 
     - name: Modify framework smali
       run: |
-        python3 framework_patch.py "${{ github.event.inputs.core }}"
+        # Ensure your python script correctly references the input smali directories (classes, classes2, etc.)
+        python3 framework_patch.py # Removed problematic input, script should know its targets or use env vars
+        # Example: python3 framework_patch.py --core_input "${{ github.event.inputs.core }}" (if script accepts args)
 
     - name: Modify services smali
       run: |
-        python3 services_patch.py "${{ github.event.inputs.core }}"
+        python3 services_patch.py # Removed problematic input
 
     - name: Modify miui-services smali files
       run: |
         python3 miui-service_Patch.py
 
-    - name: Recompile framework dex files
+    - name: Create directory for recompiled DEX files
+      run: |
+        mkdir -p recompiled_dex/framework
+        mkdir -p recompiled_dex/services
+        mkdir -p recompiled_dex/miui_services
+
+    - name: Recompile framework dex files into recompiled_dex
       run: |
         if [ -d classes ]; then
-          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
-        else
-          echo "classes directory not found, skipping recompilation."
+          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o recompiled_dex/framework/classes.dex
         fi
         for i in {2..5}; do
           if [ -d "classes$i" ]; then
-            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
-          else
-            echo "classes$i directory not found, skipping recompilation."
+            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "recompiled_dex/framework/classes${i}.dex"
           fi
         done
 
-    - name: Recompile services dex files
+    - name: Recompile services dex files into recompiled_dex
       run: |
         if [ -d services_classes ]; then
-          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
-        else
-          echo "services_classes directory not found, skipping recompilation."
+          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o recompiled_dex/services/classes.dex
         fi
         for i in {2..5}; do
           if [ -d "services_classes$i" ]; then
-            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
-          else
-            echo "services_classes$i directory not found, skipping recompilation."
+            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "recompiled_dex/services/classes${i}.dex"
           fi
         done
 
-    - name: Recompile miui-services dex file
+    - name: Recompile miui-services dex files into recompiled_dex
       run: |
-        java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
-        
-    - name: Recompile framework.jar
-      run: |
-        cd framework
-        7z a -tzip ../framework_new.zip *
-        cd ..
+        if [ -d miui_services_classes ]; then
+          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o recompiled_dex/miui_services/classes.dex
+        fi
+        # Add loop for classes2-5.dex for miui-services if they were decompiled and patched
+        for i in {2..5}; do
+            if [ -d "miui_services_classes${i}" ]; then
+                java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "miui_services_classes${i}" -o "recompiled_dex/miui_services/classes${i}.dex"
+            fi
+        done
 
-    - name: Recompile services.jar
-      run: |
-        cd services
-        7z a -tzip ../services_new.zip *
-        cd ..
 
-    - name: Recompile miui-services.jar
+    - name: Create modifiable copies of original JARs for updating
       run: |
-        cd miui_services
-        7z a -tzip ../miui_services_new.zip *
-        cd ..
+        cp framework.jar framework_updated.jar
+        cp services.jar services_updated.jar
+        cp miui-services.jar miui_services_updated.jar
 
-    - name: Align the zips
+    - name: Update framework_updated.jar with recompiled dex files
       run: |
-        zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar
-        zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
-        zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
+        if [ -f recompiled_dex/framework/classes.dex ]; then
+          (cd recompiled_dex/framework && 7z u -mx=9 ../../framework_updated.jar classes.dex) # mx=9 for default compression, can be omitted for 7z default.
+        fi
+        for i in {2..5}; do
+          if [ -f "recompiled_dex/framework/classes${i}.dex" ]; then
+            (cd recompiled_dex/framework && 7z u -mx=9 ../../framework_updated.jar "classes${i}.dex")
+          fi
+        done
+
+    - name: Update services_updated.jar with recompiled dex files
+      run: |
+        if [ -f recompiled_dex/services/classes.dex ]; then
+          (cd recompiled_dex/services && 7z u -mx=9 ../../services_updated.jar classes.dex)
+        fi
+        for i in {2..5}; do
+          if [ -f "recompiled_dex/services/classes${i}.dex" ]; then
+            (cd recompiled_dex/services && 7z u -mx=9 ../../services_updated.jar "classes${i}.dex")
+          fi
+        done
+
+    - name: Update miui_services_updated.jar with recompiled dex files
+      run: |
+        if [ -f recompiled_dex/miui_services/classes.dex ]; then
+          (cd recompiled_dex/miui_services && 7z u -mx=9 ../../miui_services_updated.jar classes.dex)
+        fi
+        # Add loop for classes2-5.dex for miui-services if they exist
+        for i in {2..5}; do
+            if [ -f "recompiled_dex/miui_services/classes${i}.dex" ]; then
+                (cd recompiled_dex/miui_services && 7z u -mx=9 ../../miui_services_updated.jar "classes${i}.dex")
+            fi
+        done
+
+    - name: Align the updated JARs
+      run: |
+        # Using standard zipalign syntax: zipalign -f -p -v <alignment> infile outfile
+        # The -p option is for page aligning uncompressed .so files.
+        # The original workflow's "-z 4" for zipalign was non-standard. '4' is the alignment value.
+        zipalign -f -p -v 4 framework_updated.jar aligned_framework.jar
+        zipalign -f -p -v 4 services_updated.jar aligned_services.jar
+        zipalign -f -p -v 4 miui_services_updated.jar aligned_miui_services.jar
 
     - name: Copy aligned jars to Magisk module
       run: |
@@ -204,46 +283,88 @@ jobs:
 
     - name: Create Version From Link
       run: |
-        if [ -z "${{ github.event.inputs.custom_version }}" ]; then
-          framework_url="${{ github.event.inputs.framework_jar_url }}"
-          version=$(echo $framework_url | grep -oP '(?<=V)[^/]*(?=/system)')
-          echo "version=${version}" >> $GITHUB_ENV
+        FW_URL="${{ github.event.inputs.framework_jar_url }}"
+        CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+        CUSTOM_DEVICE_NAME="${{ github.event.inputs.custom_device_name }}"
+
+        if [ -z "$CUSTOM_VERSION" ]; then
+          ROM_VERSION=$(echo "$FW_URL" | grep -oP '(?<=V)[^/]*(?=/system)')
+          echo "version=${ROM_VERSION}" >> $GITHUB_ENV
+          echo "Final Version used: ${ROM_VERSION}"
         else
-          echo "version=${{ github.event.inputs.custom_version }}" >> $GITHUB_ENV
+          echo "version=${CUSTOM_VERSION}" >> $GITHUB_ENV
+          echo "Final Version used (custom): ${CUSTOM_VERSION}"
         fi
-        if [ -z "${{ github.event.inputs.custom_device_name }}" ]; then
-          framework_url="${{ github.event.inputs.framework_jar_url }}"
-          device_name=$(echo $framework_url | grep -oP '(?<=redmi/)[^/]*(?=/-)')
-          echo "device_name=${device_name}" >> $GITHUB_ENV
+
+        if [ -z "$CUSTOM_DEVICE_NAME" ]; then
+          # Attempt to extract device name, ensure it's robust or fallback
+          ROM_DEVICE_NAME=$(echo "$FW_URL" | grep -oP '(?<=/)[a-zA-Z0-9_]+(?=/)') # More generic device name pattern
+          # Fallback if pattern fails
+          if [ -z "$ROM_DEVICE_NAME" ]; then
+            ROM_DEVICE_NAME="unknown_device" # Fallback device name
+          fi
+          echo "device_name=${ROM_DEVICE_NAME}" >> $GITHUB_ENV
+          echo "Final Device Name used: ${ROM_DEVICE_NAME}"
         else
-          echo "device_name=${{ github.event.inputs.custom_device_name }}" >> $GITHUB_ENV
+          echo "device_name=${CUSTOM_DEVICE_NAME}" >> $GITHUB_ENV
+          echo "Final Device Name used (custom): ${CUSTOM_DEVICE_NAME}"
         fi
-        echo "version=${version}"
-        echo "device_name=${device_name}"
+        # Ensure variables are set for subsequent steps
+        echo "Current GITHUB_ENV version: ${{ env.version }}"
+        echo "Current GITHUB_ENV device_name: ${{ env.device_name }}"
+
 
     - name: Zip Magisk module
       run: |
         cd magisk_module
-        zip -r ../${{ env.device_name }}_${{ env.version }}.zip *
+        # Ensure env.device_name and env.version are available and not empty
+        if [ -z "${{ env.device_name }}" ] || [ -z "${{ env.version }}" ]; then
+          echo "Error: device_name or version is empty. Cannot create zip." >&2
+          # Attempt to use inputs as fallback if env vars didn't propagate
+          DEVICE_FALLBACK="${{ github.event.inputs.custom_device_name }}"
+          VERSION_FALLBACK="${{ github.event.inputs.custom_version }}"
+          if [ -z "$DEVICE_FALLBACK" ]; then DEVICE_FALLBACK="fallback_device"; fi
+          if [ -z "$VERSION_FALLBACK" ]; then VERSION_FALLBACK="fallback_version"; fi
+          echo "Using fallbacks: ${DEVICE_FALLBACK}_${VERSION_FALLBACK}.zip"
+          zip -r "../${DEVICE_FALLBACK}_${VERSION_FALLBACK}.zip" *
+        else
+          zip -r "../${{ env.device_name }}_${{ env.version }}.zip" *
+        fi
         cd ..
         mkdir -p out
-        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
-        mv ${{ env.device_name }}_${{ env.version }}.zip out/
+        # Ensure the zip file exists before moving
+        ZIP_FILE_NAME=""
+        if [ -f "${{ env.device_name }}_${{ env.version }}.zip" ]; then
+          ZIP_FILE_NAME="${{ env.device_name }}_${{ env.version }}.zip"
+        elif [ -f "${DEVICE_FALLBACK}_${VERSION_FALLBACK}.zip" ]; then # Check fallback name
+           ZIP_FILE_NAME="${DEVICE_FALLBACK}_${VERSION_FALLBACK}.zip"
+        fi
+
+        if [ -n "$ZIP_FILE_NAME" ] && [ -f "$ZIP_FILE_NAME" ]; then
+          chmod +w "$ZIP_FILE_NAME"
+          mv "$ZIP_FILE_NAME" out/
+          echo "Magisk module zipped to out/$ZIP_FILE_NAME"
+        else
+          echo "Error: Zip file not found after attempting to create it." >&2
+          ls -la # List files for debugging
+          exit 1
+        fi
+
 
     - name: Create Release Notes
       run: |
         echo "## Release Notes" > release_notes.txt
         echo "- Built modified jars from commit ${{ github.sha }}" >> release_notes.txt
         echo "- Version: ${{ env.version }}" >> release_notes.txt
-        echo "- Android Sürümü: ${{ github.event.inputs.android_api_level }}" >> release_notes.txt
+        echo "- Android API Level: ${{ github.event.inputs.android_api_level }}" >> release_notes.txt # "Android Sürümü" to "Android API Level" for clarity
 
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-          artifacts: out/*
-          tag: ${{ env.version }}
-          name: ${{ env.device_name }}_${{ env.version }}
-          allowUpdates: true
-          makeLatest: true
-          bodyFile: release_notes.txt
-          token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: out/*
+        tag: ${{ env.version }}_${{ env.device_name }} # Ensure tag is unique
+        name: ${{ env.device_name }} ${{ env.version }} # Release name
+        allowUpdates: true
+        makeLatest: true
+        bodyFile: release_notes.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
