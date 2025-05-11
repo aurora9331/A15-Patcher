@@ -424,6 +424,11 @@ def modify_smali_files(directories):
             modify_strict_jar_file(strict_jar_file)
         else:
             logging.warning(f"File not found: {strict_jar_file}")
+        if os.path.exists(strict_jar_verifier):
+            logging.info(f"Found file: {strict_jar_verifier}")
+            modify_strict_jar_verifier(strict_jar_verifier)
+        else:
+            logging.warning(f"File not found: {strict_jar_verifier}")
 
 
 if __name__ == "__main__":
