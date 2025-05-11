@@ -289,6 +289,41 @@ def modify_parsing_package_utils(file_path):
     logging.info(f"Completed modification for file: {file_path}")
         
         
+def modify_strict_jar_file(file_path):
+    """
+    Modify the StrictJarFile smali file to remove specific instructions and
+    add new ones based on the provided patterns.
+    """
+    logging.info(f"Modifying StrictJarFile file: {file_path}")
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    modified_lines = []
+    in_target_invoke = False
+
+    for i, line in enumerate(lines):
+        if 'invoke-virtual {p0, v5}, Landroid/util/jar/StrictJarFile;->findEntry(Ljava/lang/String;)Ljava/util/zip/ZipEntry;' in line:
+            logging.info("Found target invoke-virtual line.")
+            in_target_invoke = True
+            modified_lines.append(line)
+            continue
+        
+        if in_target_invoke:
+            # Remove specific lines after the target
+            if 'if-eqz v6, :cond_56' in line or ':cond_56' in line:
+                logging.info(f"Removing line: {line.strip()}")
+                continue
+            else:
+                in_target_invoke = False
+
+        # Add the current line to the modified list if not removed
+        modified_lines.append(line)
+
+    with open(file_path, 'w') as file:
+        file.writelines(modified_lines)
+    logging.info(f"Completed modification for file: {file_path}")
+
+
 def copy_and_replace_files(source_dirs, target_dirs, sub_dirs):
     for source_dir, sub_dir in zip(source_dirs, sub_dirs):
         for target_dir in target_dirs:
@@ -330,6 +365,7 @@ def modify_smali_files(directories):
                                                 'android/content/pm/PackageParser$PackageParserException.smali')
         strict_jar_verifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
         parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
+        strict_jar_file = os.path.join(directory, 'android/util/jar/StrictJarFile.smali')
 
         if os.path.exists(signing_details):
             logging.info(f"Found file: {signing_details}")
@@ -383,6 +419,11 @@ def modify_smali_files(directories):
             modify_parsing_package_utils(parsing_package_utils)
         else:
             logging.warning(f"File not found: {parsing_package_utils}")
+        if os.path.exists(strict_jar_file):
+            logging.info(f"Found file: {strict_jar_file}")
+            modify_strict_jar_file(strict_jar_file)
+        else:
+            logging.warning(f"File not found: {strict_jar_file}")
 
 
 if __name__ == "__main__":
