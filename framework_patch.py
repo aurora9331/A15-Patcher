@@ -289,13 +289,23 @@ def modify_parsing_package_utils(file_path):
     logging.info(f"Completed modification for file: {file_path}")
 
 
-parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
+def modify_smali_files(directories):
+    for directory in directories:  # Ensure 'directory' is defined here
+        logging.info(f"Scanning directory: {directory}")
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file.endswith(".smali"):
+                    filepath = os.path.join(root, file)
+                    patch(filepath)
+        
+        # Ensure 'parsing_package_utils' is defined inside this loop
+        parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
 
-if os.path.exists(parsing_package_utils):
-    logging.info(f"Found file: {parsing_package_utils}")
-    modify_parsing_package_utils(parsing_package_utils)
-else:
-    logging.warning(f"File not found: {parsing_package_utils}")
+        if os.path.exists(parsing_package_utils):
+            logging.info(f"Found file: {parsing_package_utils}")
+            modify_parsing_package_utils(parsing_package_utils)
+        else:
+            logging.warning(f"File not found: {parsing_package_utils}")
 
 
 def copy_and_replace_files(source_dirs, target_dirs, sub_dirs):
