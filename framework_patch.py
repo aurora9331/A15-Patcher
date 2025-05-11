@@ -263,49 +263,6 @@ def modify_strict_jar_verifier(file_path):
     logging.info(f"Completed modification for file: {file_path}")
 
 
-def modify_parsing_package_utils(file_path):
-    """
-    Modify the ParsingPackageUtils file to add 'const/4 v4, 0x0' above 'if-eqz v4, :cond_x'
-    when '<manifest> specifies bad sharedUserId name "' is found.
-    """
-    logging.info(f"Modifying ParsingPackageUtils file: {file_path}")
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    modified_lines = []
-    for i, line in enumerate(lines):
-        # Look for the target line
-        if '<manifest> specifies bad sharedUserId name "' in line:
-            logging.info(f"Found target line in {file_path}")
-            # Check for the 'if-eqz v4, :cond_x' line above
-            if i > 0 and 'if-eqz v4, :cond_x' in lines[i - 1]:
-                # Add the new line above it
-                modified_lines.append("    const/4 v4, 0x0\n")
-                logging.info(f"Inserted 'const/4 v4, 0x0' above 'if-eqz v4, :cond_x'")
-        modified_lines.append(line)
-
-    with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
-    logging.info(f"Completed modification for file: {file_path}")
-
-
-def modify_smali_files(directories):
-    for directory in directories:
-        logging.info(f"Scanning directory: {directory}")
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith(".smali"):
-                    filepath = os.path.join(root, file)
-                    patch(filepath)
-        parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
-
-        if os.path.exists(parsing_package_utils):
-            logging.info(f"Found file: {parsing_package_utils}")
-            modify_parsing_package_utils(parsing_package_utils)
-        else:
-            logging.warning(f"File not found: {parsing_package_utils}")
-
-
 def copy_and_replace_files(source_dirs, target_dirs, sub_dirs):
     for source_dir, sub_dir in zip(source_dirs, sub_dirs):
         for target_dir in target_dirs:
@@ -346,7 +303,6 @@ def modify_smali_files(directories):
         package_parser_exception = os.path.join(directory,
                                                 'android/content/pm/PackageParser$PackageParserException.smali')
         strict_jar_verifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
-        parsing_package_utils = os.path.join(directory, 'android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
 
         if os.path.exists(signing_details):
             logging.info(f"Found file: {signing_details}")
@@ -395,11 +351,7 @@ def modify_smali_files(directories):
             modify_strict_jar_verifier(strict_jar_verifier)
         else:
             logging.warning(f"File not found: {strict_jar_verifier}")
-        if os.path.exists(parsing_package_utils):
-            logging.info(f"Found file: {parsing_package_utils}")
-            modify_parsing_package_utils(parsing_package_utils)
-        else:
-            logging.warning(f"File not found: {parsing_package_utils}")
+
 
 if __name__ == "__main__":
     directories = ["classes", "classes2", "classes3", "classes4", "classes5"]
