@@ -287,27 +287,8 @@ def modify_parsing_package_utils(file_path):
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
     logging.info(f"Completed modification for file: {file_path}")
-
-
-def modify_smali_files(directories):
-    for directory in directories:  # Ensure 'directory' is defined here
-        logging.info(f"Scanning directory: {directory}")
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith(".smali"):
-                    filepath = os.path.join(root, file)
-                    patch(filepath)
         
-        # Ensure 'parsing_package_utils' is defined inside this loop
-        parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
-
-        if os.path.exists(parsing_package_utils):
-            logging.info(f"Found file: {parsing_package_utils}")
-            modify_parsing_package_utils(parsing_package_utils)
-        else:
-            logging.warning(f"File not found: {parsing_package_utils}")
-
-
+        
 def copy_and_replace_files(source_dirs, target_dirs, sub_dirs):
     for source_dir, sub_dir in zip(source_dirs, sub_dirs):
         for target_dir in target_dirs:
@@ -348,6 +329,7 @@ def modify_smali_files(directories):
         package_parser_exception = os.path.join(directory,
                                                 'android/content/pm/PackageParser$PackageParserException.smali')
         strict_jar_verifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
+        parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
 
         if os.path.exists(signing_details):
             logging.info(f"Found file: {signing_details}")
@@ -396,6 +378,11 @@ def modify_smali_files(directories):
             modify_strict_jar_verifier(strict_jar_verifier)
         else:
             logging.warning(f"File not found: {strict_jar_verifier}")
+        if os.path.exists(parsing_package_utils):
+            logging.info(f"Found file: {parsing_package_utils}")
+            modify_parsing_package_utils(parsing_package_utils)
+        else:
+            logging.warning(f"File not found: {parsing_package_utils}")
 
 
 if __name__ == "__main__":
