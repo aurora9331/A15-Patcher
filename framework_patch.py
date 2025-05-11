@@ -271,8 +271,8 @@ def modify_strict_jar_verifier(file_path):
 
 def modify_parsing_package_utils(file_path):
     """
-    Modify the ParsingPackageUtils file to add 'const/4 v4, 0x0' above 'if-eqz v4, :cond_x'
-    when '<manifest> specifies bad sharedUserId name "' is found.
+    Modify the `ParsingPackageUtils` smali file to add `const/4 v4, 0x0` above `if-eqz v4, :cond_x`
+    when `"<manifest> specifies bad sharedUserId name "` is found.
     """
     logging.info(f"Modifying ParsingPackageUtils file: {file_path}")
     with open(file_path, 'r') as file:
@@ -280,25 +280,21 @@ def modify_parsing_package_utils(file_path):
 
     modified_lines = []
     for i, line in enumerate(lines):
-        # Look for the target line
         if '<manifest> specifies bad sharedUserId name "' in line:
             logging.info(f"Found target line in {file_path}")
-            # Check for the 'if-eqz v4, :cond_x' line above
             if i > 0 and 'if-eqz v4, :cond_x' in lines[i - 1]:
-                # Add the new line above it
                 modified_lines.append("    const/4 v4, 0x0\n")
                 logging.info(f"Inserted 'const/4 v4, 0x0' above 'if-eqz v4, :cond_x'")
         modified_lines.append(line)
 
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
-    logging.info(f"Completed modification for file: {file_path}")
+    logging.info(f"Modification completed for file: {file_path}")
         
         
 def modify_strict_jar_file(file_path):
     """
-    Modify the StrictJarFile smali file to remove specific instructions and
-    add new ones based on the provided patterns.
+    Modify the `StrictJarFile` smali file to remove specific instructions.
     """
     logging.info(f"Modifying StrictJarFile file: {file_path}")
     with open(file_path, 'r') as file:
@@ -313,21 +309,19 @@ def modify_strict_jar_file(file_path):
             in_target_invoke = True
             modified_lines.append(line)
             continue
-        
+
         if in_target_invoke:
-            # Remove specific lines after the target
             if 'if-eqz v6, :cond_56' in line or ':cond_56' in line:
                 logging.info(f"Removing line: {line.strip()}")
                 continue
             else:
                 in_target_invoke = False
 
-        # Add the current line to the modified list if not removed
         modified_lines.append(line)
 
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
-    logging.info(f"Completed modification for file: {file_path}")
+    logging.info(f"Modification completed for file: {file_path}")
 
 
 def copy_and_replace_files(source_dirs, target_dirs, sub_dirs):
