@@ -78,7 +78,7 @@ def modify_file(file_path):
         "checkCapability": re.compile(r'\.method.*checkCapability\(.*\)Z'),
         "checkCapabilityRecover": re.compile(r'\.method.*checkCapabilityRecover\(.*\)Z'),
         "hasAncestorOrSelf": re.compile(r'\.method.*hasAncestorOrSelf\(.*\)Z'),
-        "verifyMessageDigest": re.compile(r'\.method.*verifyMessageDigest\(.*\)Z'),
+        "verifyMessageDigest" : re.compile(r'\.method.*verifyMessageDigest\(.*\)Z'),
         "getMinimumSignatureSchemeVersionForTargetSdk": re.compile(
             r'\.method.*getMinimumSignatureSchemeVersionForTargetSdk\(I\)I'),
     }
@@ -112,10 +112,9 @@ def modify_file(file_path):
                     modified_lines.append("    const/4 v0, 0x1\n")
                     modified_lines.append("    return v0\n")
                 elif method_type == "verifyMessageDigest":
-                    logging.info(f"Modifying method body for {method_type}")
-                    modified_lines.append(original_registers_line)
+                    modified_lines.append("    .registers 4\n")
                     modified_lines.append("    const/4 v0, 0x1\n")
-                    modified_lines.append("    return v0\n")    
+                    modified_lines.append("    return v0\n")
                 elif method_type == "getMinimumSignatureSchemeVersionForTargetSdk":
                     logging.info(f"Modifying method body for {method_type}")
                     modified_lines.append(original_registers_line)
