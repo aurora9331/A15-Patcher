@@ -310,8 +310,42 @@ def modify_Parsing_Package_Utils_sharedUserId(file_path):
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
     logging.info(f"Completed modification for parseSharedUser in {file_path}")
+    
         
-        
+def modify_android_content_pm_PackageParser(file_path):
+    logging.info(f"Modifying android.content.pm.PackageParser in {file_path}")
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    modified_lines = []
+    target_string = "\"<manifest> specifies bad sharedUserId name \\\"\""
+    if_nez_pattern = re.compile(r'if-nez v5, :cond_\w+')
+    
+    for i, line in enumerate(lines):
+        if target_string in line:
+            logging.info(f"Found target string at line {i + 1}: {line.strip()}")
+            for j in range(i - 1, -1, -1):  # Search upwards for 'if-nez v5, :cond_x'
+                if if_nez_pattern.search(lines[j]):
+                    logging.info(f"Found 'if-nez' at line {j + 1}: {lines[j].strip()}")
+                    modified_lines = (
+                        lines[:j] +
+                        ["    const/4 v5, 0x1\n"] +
+                        lines[j:]
+                    )
+                    break
+            else:
+                logging.warning("Could not find 'if-nez' before the target string.")
+                modified_lines = lines
+            break
+    else:
+        logging.warning("Target string not found.")
+        modified_lines = lines
+
+    with open(file_path, 'w') as file:
+        file.writelines(modified_lines)
+    logging.info(f"Completed modification for android.content.pm.PackageParser in {file_path}")
+
+
 def modify_strict_jar_file(file_path):
     logging.info(f"Processing file: {file_path}")
 
@@ -406,6 +440,7 @@ def modify_smali_files(directories):
         strict_jar_verifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
         Parsing_Package_Utils_sharedUserId = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
         strict_jar_file = os.path.join(directory, 'android/util/jar/StrictJarFile.smali')
+        android_content_pm_PackageParser = os.path.join(directory, 'android/content/pm/PackageParser.smali')
 
         if os.path.exists(signing_details):
             logging.info(f"Found file: {signing_details}")
@@ -464,6 +499,11 @@ def modify_smali_files(directories):
             modify_strict_jar_file(strict_jar_file)
         else:
             logging.warning(f"File not found: {strict_jar_file}")
+        if os.path.exists(android_content_pm_PackageParser):
+            logging.info(f"Found file: {android_content_pm_PackageParser}")
+            modify_android_content_pm_PackageParser(android_content_pm_PackageParser)
+        else:
+            logging.warning(f"File not found: {android_content_pm_PackageParser}")
 
 
 if __name__ == "__main__":
