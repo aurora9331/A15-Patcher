@@ -144,21 +144,41 @@ def modify_file(file_path):
     
 
 def modify_reconcile_package_utils(file_path):
-    logging.info(f"Modifying ReconcilePackageUtils file: {file_path}")
+    """
+    Modify the smali file to change the first occurrence of `const/4 v0, 0x0` 
+    to `const/4 v0, 0x1` after the specified invoke-static line.
+    """
+    target_line = "invoke-static {}, Lcom/android/internal/hidden_from_bootclasspath/android/content/pm/Flags;->restrictNonpreloadsSystemShareduids()Z"
+    found_target = False
+    modified = False
+
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
     modified_lines = []
     for line in lines:
-        if ".method static constructor <clinit>()V" in line:
-            logging.info("Found method: <clinit> in ReconcilePackageUtils.smali")
-        if "const/4 v0, 0x0" in line:
-            modified_lines.append("    const/4 v0, 0x1\n")
         modified_lines.append(line)
+        if target_line in line:
+            logging.info(f"Found target line: {line.strip()}")
+            found_target = True
+            continue
+        
+        if found_target and "const/4 v0, 0x0" in line and not modified:
+            # Replace the first occurrence of `const/4 v0, 0x0` with `const/4 v0, 0x1`
+            logging.info(f"Modifying line: {line.strip()}")
+            modified_lines[-1] = "    const/4 v0, 0x1\n"
+            modified = True
+
+    if not found_target:
+        logging.warning(f"Target line not found in file: {file_path}")
+    elif not modified:
+        logging.warning(f"No `const/4 v0, 0x0` found after the target line in file: {file_path}")
 
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
-    logging.info(f"Completed modification for ReconcilePackageUtils file: {file_path}")
+
+    if modified:
+        logging.info(f"File modified successfully: {file_path}")
 
 
 def modify_install_package_helper(file_path):
