@@ -112,7 +112,8 @@ def modify_file(file_path):
                     modified_lines.append("    const/4 v0, 0x1\n")
                     modified_lines.append("    return v0\n")
                 elif method_type == "verifyMessageDigest":
-                    modified_lines.append("    .registers 4\n")
+                    logging.info(f"Modifying method body for {method_type}")
+                    modified_lines.append(original_registers_line)
                     modified_lines.append("    const/4 v0, 0x1\n")
                     modified_lines.append("    return v0\n")
                 elif method_type == "getMinimumSignatureSchemeVersionForTargetSdk":
