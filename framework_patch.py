@@ -269,58 +269,99 @@ def modify_strict_jar_verifier(file_path):
     logging.info(f"Completed modification for file: {file_path}")
 
 
-def modify_parsing_package_utils(file_path):
-    """
-    Modify the `ParsingPackageUtils` smali file to add `const/4 v4, 0x0` above `if-eqz v4, :cond_x`
-    when `"<manifest> specifies bad sharedUserId name "` is found.
-    """
-    logging.info(f"Modifying ParsingPackageUtils file: {file_path}")
+def modify_Parsing_Package_Utils_sharedUserId(file_path):
+    logging.info(f"Modifying parseSharedUser in {file_path}")
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
     modified_lines = []
+    in_method = False
+    const_string_index = None
+    target_register = None
+    last_if_eqz_index = None
+
     for i, line in enumerate(lines):
-        if '<manifest> specifies bad sharedUserId name "' in line:
-            logging.info(f"Found target line in {file_path}")
-            if i > 0 and 'if-eqz v4, :cond_x' in lines[i - 1]:
-                modified_lines.append("    const/4 v4, 0x0\n")
-                logging.info(f"Inserted 'const/4 v4, 0x0' above 'if-eqz v4, :cond_x'")
-        modified_lines.append(line)
+        if re.match(r'\.method.*parseSharedUser\(.*\)', line) and "private" in line:
+            logging.info("Found the method: parseSharedUser.")
+            in_method = True
+
+        if in_method:
+            if re.search(r'const-string.*<manifest>.*sharedUserId', line):
+                logging.info(f"Found const-string with error message at line {i + 1}: {line.strip()}")
+                const_string_index = i
+                break
+
+            if "if-eqz" in line:
+                last_if_eqz_index = i
+                match = re.search(r'if-eqz (\w+),', line)
+                if match:
+                    target_register = match.group(1)
+
+    if last_if_eqz_index is not None and const_string_index is not None and last_if_eqz_index < const_string_index:
+        logging.info(f"Modifying 'if-eqz' at line {last_if_eqz_index + 1}: {lines[last_if_eqz_index].strip()}")
+        modified_lines = (
+            lines[:last_if_eqz_index]
+            + [f"    const/4 {target_register}, 0x0\n"]
+            + lines[last_if_eqz_index:]
+        )
+    else:
+        logging.warning("Failed to find a valid 'if-eqz' before the const-string.")
+        modified_lines = lines
 
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
-    logging.info(f"Modification completed for file: {file_path}")
+    logging.info(f"Completed modification for parseSharedUser in {file_path}")
         
         
 def modify_strict_jar_file(file_path):
-    """
-    Modify the `StrictJarFile` smali file to remove specific instructions.
-    """
-    logging.info(f"Modifying StrictJarFile file: {file_path}")
+    logging.info(f"Processing file: {file_path}")
+
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
     modified_lines = []
-    in_target_invoke = False
+    i = 0
 
-    for i, line in enumerate(lines):
-        if 'invoke-virtual {p0, v5}, Landroid/util/jar/StrictJarFile;->findEntry(Ljava/lang/String;)Ljava/util/zip/ZipEntry;' in line:
-            logging.info("Found target invoke-virtual line.")
-            in_target_invoke = True
+    invoke_virtual_pattern = re.compile(
+        r'invoke-virtual \{p0, v5\}, Landroid/util/jar/StrictJarFile;->findEntry\(Ljava/lang/String;\)Ljava/util/zip/ZipEntry;')
+    if_eqz_pattern = re.compile(r'if-eqz v\d+, :cond_\w+')
+    label_pattern = re.compile(r':cond_\w+')
+
+    while i < len(lines):
+        line = lines[i]
+
+        if invoke_virtual_pattern.search(line):
             modified_lines.append(line)
-            continue
+            i += 1
 
-        if in_target_invoke:
-            if 'if-eqz v6, :cond_56' in line or ':cond_56' in line:
-                logging.info(f"Removing line: {line.strip()}")
-                continue
-            else:
-                in_target_invoke = False
+            while i < len(lines):
+                next_line = lines[i]
 
-        modified_lines.append(line)
+                if if_eqz_pattern.search(next_line):
+                    logging.info(f"Removing line: {next_line.strip()}")
+                    i += 1
+
+                    while i < len(lines):
+                        next_line = lines[i]
+                        if label_pattern.search(next_line):
+                            logging.info(f"Removing line: {next_line.strip()}")
+                            i += 1
+                            break
+                        else:
+                            modified_lines.append(next_line)
+                        i += 1
+                    break
+
+                modified_lines.append(next_line)
+                i += 1
+
+        else:
+            modified_lines.append(line)
+            i += 1
 
     with open(file_path, 'w') as file:
         file.writelines(modified_lines)
+
     logging.info(f"Modification completed for file: {file_path}")
 
 
