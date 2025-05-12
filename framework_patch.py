@@ -405,7 +405,7 @@ def modify_smali_files(directories):
         package_parser_exception = os.path.join(directory,
                                                 'android/content/pm/PackageParser$PackageParserException.smali')
         strict_jar_verifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
-        parsing_package_utils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
+        Parsing_Package_Utils_sharedUserId = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
         strict_jar_file = os.path.join(directory, 'android/util/jar/StrictJarFile.smali')
 
         if os.path.exists(signing_details):
@@ -455,11 +455,11 @@ def modify_smali_files(directories):
             modify_strict_jar_verifier(strict_jar_verifier)
         else:
             logging.warning(f"File not found: {strict_jar_verifier}")
-        if os.path.exists(parsing_package_utils):
-            logging.info(f"Found file: {parsing_package_utils}")
-            modify_parsing_package_utils(parsing_package_utils)
+        if os.path.exists(Parsing_Package_Utils_sharedUserId):
+            logging.info(f"Found file: {Parsing_Package_Utils_sharedUserId}")
+            modify_Parsing_Package_Utils_sharedUserId(Parsing_Package_Utils_sharedUserId)
         else:
-            logging.warning(f"File not found: {parsing_package_utils}")
+            logging.warning(f"File not found: {Parsing_Package_Utils_sharedUserId}")
         if os.path.exists(strict_jar_file):
             logging.info(f"Found file: {strict_jar_file}")
             modify_strict_jar_file(strict_jar_file)
