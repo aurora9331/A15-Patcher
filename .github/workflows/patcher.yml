@@ -192,11 +192,26 @@ jobs:
         7z a -tzip ../miui_services_new.zip *
         cd ..
 
-    - name: Align the zips
+    - name: Install Android SDK
       run: |
-        zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar
-        zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
-        zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
+        sudo apt-get update
+        sudo apt-get install -y openjdk-11-jdk wget unzip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        unzip -q commandlinetools-linux-8512546_latest.zip -d $HOME/android-sdk/cmdline-tools
+        mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+        echo "export ANDROID_HOME=$HOME/android-sdk" >> $HOME/.bashrc
+        echo "export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.0:$PATH" >> $HOME/.bashrc
+        source $HOME/.bashrc
+        yes | sdkmanager --licenses
+        
+    - name: Install Build Tools
+      run: |
+        yes | sdkmanager "build-tools;33.0.0"
+        
+    - name: Run zipalign
+      run: |
+        zipalign -h
 
     - name: Copy aligned jars to Magisk module
       run: |
