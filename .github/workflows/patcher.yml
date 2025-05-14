@@ -43,7 +43,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2 jq
+        sudo apt-get update
+        sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
         pip install gdown
 
     - name: Download and validate JARs
