@@ -41,8 +41,8 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-  - name: Install Dependencies
-    run: sudo apt-get install openjdk-17-jdk -y
+    - name: Install Dependencies
+      run: sudo apt-get install openjdk-17-jdk -y
 
     - name: Download and validate JARs
       run: |
