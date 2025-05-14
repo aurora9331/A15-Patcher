@@ -41,10 +41,8 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    - name: Install dependencies
-      run: |
-        sudo apt install -y default-jdk zipalign p7zip-full python3 aria2 jq
-        pip install gdown
+  - name: Install Dependencies
+    run: sudo apt-get install openjdk-17-jdk -y
 
     - name: Download and validate JARs
       run: |
