@@ -41,7 +41,13 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    - name: Install Dependencies
+    - name: Update APT Cache
+      run: sudo apt-get update
+
+    - name: Fix Missing Packages
+      run: sudo apt-get install --fix-missing -y
+
+    - name: Install OpenJDK
       run: sudo apt-get install openjdk-17-jdk -y
 
     - name: Download and validate JARs
