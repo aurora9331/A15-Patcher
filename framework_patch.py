@@ -513,7 +513,7 @@ def modify_smali_files(directories):
             logging.warning(f"File not found: {android_content_pm_PackageParser}")
         if os.path.exists(application_info):
             logging.info(f"Found file: {application_info}")
-            modify_application_info(application_info)
+            # modify_application_info(application_info)  # Remove or comment this line
         else:
             logging.warning(f"File not found: {application_info}")
 
