@@ -447,6 +447,7 @@ def modify_smali_files(directories):
         Parsing_Package_Utils_sharedUserId = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
         strict_jar_file = os.path.join(directory, 'android/util/jar/StrictJarFile.smali')
         android_content_pm_PackageParser = os.path.join(directory, 'android/content/pm/PackageParser.smali')
+        application_info = os.path.join(directory, 'android/content/pm/ApplicationInfo.smali')
 
         if os.path.exists(signing_details):
             logging.info(f"Found file: {signing_details}")
@@ -510,6 +511,11 @@ def modify_smali_files(directories):
             modify_android_content_pm_PackageParser(android_content_pm_PackageParser)
         else:
             logging.warning(f"File not found: {android_content_pm_PackageParser}")
+        if os.path.exists(application_info):
+            logging.info(f"Found file: {application_info}")
+            modify_application_info(application_info)
+        else:
+            logging.warning(f"File not found: {application_info}")
 
 
 if __name__ == "__main__":
