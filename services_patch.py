@@ -82,7 +82,6 @@ def modify_file(file_path):
         "compareSignatures": re.compile(
             r'\.method public static compareSignatures\(Landroid/content/pm/SigningDetails;Landroid/content/pm/SigningDetails;\)I'),
         "matchSignaturesCompat": re.compile(r'\.method.*matchSignaturesCompat\(.*\)Z')
-        "isPackageWhitelistedForHiddenApis": re.compile(r'\.method.*isPackageWhitelistedForHiddenApis\(.*\)Z'),
     }
 
     for line in lines:
@@ -122,10 +121,6 @@ def modify_file(file_path):
                 elif method_type == "matchSignaturesCompat":
                     logging.info(f"Modifying method body for {method_type}")
                     modified_lines.append("    .registers 5\n")
-                    modified_lines.append("    const/4 v0, 0x1\n")
-                    modified_lines.append("    return v0\n")
-                elif method_type == "isPackageWhitelistedForHiddenApis":
-                    modified_lines.append(original_registers_line)
                     modified_lines.append("    const/4 v0, 0x1\n")
                     modified_lines.append("    return v0\n")
                 in_method = False
