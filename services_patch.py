@@ -78,7 +78,7 @@ def modify_file(file_path):
             r'\.method public static checkDowngrade\(Lcom/android/server/pm/pkg/AndroidPackage;Landroid/content/pm/PackageInfoLite;\)V'),
         "shouldCheckUpgradeKeySetLocked": re.compile(r'\.method public shouldCheckUpgradeKeySetLocked\(Lcom/android/server/pm/pkg/PackageStateInternal;Lcom/android/server/pm/pkg/SharedUserApi;I\)Z'),
         "verifySignatures": re.compile(
-            r'\.method public static verifySignatures\(Lcom/android/server/pm/PackageSetting;Lcom/android/server/pm/SharedUserSetting;Lcom/android/server/pm/PackageSetting;Landroid/content/pm/SigningDetails;\)I'),
+            r'\.method public static verifySignatures\(Lcom/android/server/pm/PackageSetting;Lcom/android/server/pm/SharedUserSetting;Lcom/android/server/pm/PackageSetting;Landroid/content/pm/SigningDetails;ZZZ\)Z'),
         "compareSignatures": re.compile(
             r'\.method public static compareSignatures\(Landroid/content/pm/SigningDetails;Landroid/content/pm/SigningDetails;\)I'),
         "matchSignaturesCompat": re.compile(r'\.method.*matchSignaturesCompat\(.*\)Z')
