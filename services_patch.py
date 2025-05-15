@@ -238,6 +238,7 @@ def modify_smali_files(directories):
         install_package_helper = os.path.join(directory, 'com/android/server/pm/InstallPackageHelper.smali')
         Key_Set_Manager_Service = os.path.join(directory, 'com/android/server/pm/KeySetManagerService.smali')
         reconcile_package_utils = os.path.join(directory, 'com/android/server/pm/ReconcilePackageUtils.smali')
+        verify_Signatures = os.path.join(directory, 'com/android/server/pm/PackageManagerServiceUtils.smali')
 
         if os.path.exists(package_manager_service_utils):
             logging.info(f"Found file: {package_manager_service_utils}")
@@ -250,6 +251,12 @@ def modify_smali_files(directories):
             modify_file(Key_Set_Manager_Service)
         else:
             logging.warning(f"File not found: {Key_Set_Manager_Service}")
+
+        if os.path.exists(verify_Signatures):
+            logging.info(f"Found file: {verify_Signatures}")
+            modify_file(verify_Signatures)
+        else:
+            logging.warning(f"File not found: {verify_Signatures}")
 
         if os.path.exists(install_package_helper):
             logging.info(f"Found file: {install_package_helper}")
