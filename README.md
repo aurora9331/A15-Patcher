@@ -4,6 +4,7 @@
 - Sadece global HyperOS 2.0 için denendi
 - Çin sürümleri test edilmemiştir.
 - [Yeni] HyperOS 2.1 destekliyor.
+- [Yeni] Bazı banka ve microsoft ürünleri yüklenme hatası giderildi.
 
 ## Kullanımı
 - [Bu linkten](https://github.com/aurora9331/A15-Patcher/actions/workflows/patcher.yml) sonra karşınıza run workflow seçeneği çıkacak
