@@ -195,8 +195,6 @@ jobs:
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
         zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
 
-    # Magisk modülü ile ilgili adımlar kaldırıldı
-
     - name: Create Version From Link
       run: |
         if [ -z "${{ github.event.inputs.custom_version }}" ]; then
@@ -216,10 +214,33 @@ jobs:
         echo "version=${version}"
         echo "device_name=${device_name}"
 
+    - name: Rename output jars for zip
+      run: |
+        cp aligned_framework.jar framework.jar
+        cp aligned_services.jar services.jar
+        cp aligned_miui_services.jar miui-services.jar
+
     # Sadece üç jar dosyasını zip'le
     - name: Zip output files
       run: |
-        zip ${{ env.device_name }}_${{ env.version }}.zip aligned_framework.jar aligned_services.jar aligned_miui_services.jar
+        zip ${{ env.device_name }}_${{ env.version }}.zip framework.jar services.jar miui-services.jar
+        mkdir -p out
+        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
+        mv ${{ env.device_name }}_${{ env.version }}.zip out/
+
+    - name: Prepare output structure for module
+      run: |
+        mkdir -p module/system/system/framework
+        mkdir -p module/system_ext/framework
+        cp framework.jar module/system/system/framework/framework.jar
+        cp services.jar module/system/system/framework/services.jar
+        cp miui-services.jar module/system_ext/framework/miui-services.jar
+
+    - name: Zip module directory
+      run: |
+        cd module
+        zip -r ../${{ env.device_name }}_${{ env.version }}.zip .
+        cd ..
         mkdir -p out
         chmod +w ${{ env.device_name }}_${{ env.version }}.zip
         mv ${{ env.device_name }}_${{ env.version }}.zip out/
