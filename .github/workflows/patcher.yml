@@ -35,12 +35,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
 
-    - name: smali ve baksmali dosyalarını kopyala
-      run: |
-        mkdir -p tools
-        cp tools/smali.jar tools/smali.jar
-        cp tools/baksmali.jar tools/baksmali.jar
-
     - name: Download JARs
       run: |
         curl -L -o framework.jar "${{ github.event.inputs.framework_jar_url }}"
