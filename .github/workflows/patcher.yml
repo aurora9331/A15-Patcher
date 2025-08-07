@@ -44,14 +44,14 @@ jobs:
         curl -L -o services.jar "${{ github.event.inputs.services_jar_url }}"
         curl -L -o miui-services.jar "${{ github.event.inputs.miui_services_jar_url }}"
 
-    - name: Extract all JARs (parallel)
+    - name: Extract all JARs 
       run: |
         7z x framework.jar -oframework &
         7z x services.jar -oservices &
         7z x miui-services.jar -omiui_services &
         wait
 
-    - name: Decompile DEX files (parallel)
+    - name: Decompile DEX files 
       run: |
         if [ -f framework/classes.dex ]; then
           java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes &
@@ -64,14 +64,14 @@ jobs:
         fi
         wait
 
-    - name: Patch smali files (parallel)
+    - name: Patch smali files 
       run: |
         python3 framework_patch.py "${{ github.event.inputs.core }}" &
         python3 services_patch.py "${{ github.event.inputs.core }}" &
         python3 miui-service_Patch.py &
         wait
 
-    - name: Recompile DEX files (parallel)
+    - name: Recompile DEX files 
       run: |
         if [ -d classes ]; then
           java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex &
@@ -84,14 +84,14 @@ jobs:
         fi
         wait
 
-    - name: Rebuild JARs (parallel)
+    - name: Rebuild JARs 
       run: |
         (cd framework && 7z a -tzip ../framework_new.zip *) &
         (cd services && 7z a -tzip ../services_new.zip *) &
         (cd miui_services && 7z a -tzip ../miui_services_new.zip *) &
         wait
 
-    - name: Align the zips (parallel)
+    - name: Align the zips 
       run: |
         zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar &
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar &
