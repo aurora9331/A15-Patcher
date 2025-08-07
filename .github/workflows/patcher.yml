@@ -80,13 +80,13 @@ jobs:
     - name: Decompile framework dex files if available
       run: |
         if [ -f framework/classes.dex ]; then
-          java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
+          java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
         else
           echo "framework/classes.dex not found, skipping decompilation."
         fi
         for i in {2..5}; do
           if [ -f "framework/classes${i}.dex" ]; then
-            java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "framework/classes${i}.dex" -o "classes${i}"
+            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "framework/classes${i}.dex" -o "classes${i}"
           else
             echo "framework/classes${i}.dex not found, skipping decompile."
           fi
@@ -95,13 +95,13 @@ jobs:
     - name: Decompile services dex files if available
       run: |
         if [ -f services/classes.dex ]; then
-          java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} services/classes.dex -o services_classes
+          java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} services/classes.dex -o services_classes
         else
           echo "services/classes.dex not found, skipping decompilation."
         fi
         for i in {2..5}; do
           if [ -f "services/classes${i}.dex" ]; then
-            java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "services/classes${i}.dex" -o "services_classes${i}"
+            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "services/classes${i}.dex" -o "services_classes${i}"
           else
             echo "services/classes${i}.dex not found, skipping decompile."
           fi
@@ -109,7 +109,7 @@ jobs:
 
     - name: Decompile miui-services dex file
       run: |
-        java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
+        java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
 
     - name: Backup smali files
       run: |
@@ -140,13 +140,13 @@ jobs:
     - name: Recompile framework dex files
       run: |
         if [ -d classes ]; then
-          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
+          java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
         else
           echo "classes directory not found, skipping recompilation."
         fi
         for i in {2..5}; do
           if [ -d "classes$i" ]; then
-            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
+            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
           else
             echo "classes$i directory not found, skipping recompilation."
           fi
@@ -155,13 +155,13 @@ jobs:
     - name: Recompile services dex files
       run: |
         if [ -d services_classes ]; then
-          java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
+          java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
         else
           echo "services_classes directory not found, skipping recompilation."
         fi
         for i in {2..5}; do
           if [ -d "services_classes$i" ]; then
-            java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
+            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
           else
             echo "services_classes$i directory not found, skipping recompilation."
           fi
@@ -169,7 +169,7 @@ jobs:
 
     - name: Recompile miui-services dex file
       run: |
-        java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
+        java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
         
     - name: Recompile framework.jar
       run: |
