@@ -170,7 +170,7 @@ jobs:
     - name: Recompile miui-services dex file
       run: |
         java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
-        
+
     - name: Recompile framework.jar
       run: |
         cd framework
@@ -220,24 +220,14 @@ jobs:
         cp aligned_services.jar services.jar
         cp aligned_miui_services.jar miui-services.jar
 
-    # Sadece üç jar dosyasını zip'le
-    - name: Zip output files
-      run: |
-        zip ${{ env.device_name }}_${{ env.version }}.zip framework.jar services.jar miui-services.jar
-        mkdir -p out
-        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
-        mv ${{ env.device_name }}_${{ env.version }}.zip out/
-
-    - name: Prepare output structure for module
+    # İSTEDİĞİNİZ KLASÖR YAPISIYLA ZIP OLUŞTURMA ADIMI
+    - name: Zip jars with requested folder structure
       run: |
         mkdir -p module/system/system/framework
         mkdir -p module/system_ext/framework
         cp framework.jar module/system/system/framework/framework.jar
         cp services.jar module/system/system/framework/services.jar
         cp miui-services.jar module/system_ext/framework/miui-services.jar
-
-    - name: Zip module directory
-      run: |
         cd module
         zip -r ../${{ env.device_name }}_${{ env.version }}.zip .
         cd ..
@@ -255,10 +245,10 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-          artifacts: out/*
-          tag: ${{ env.version }}
-          name: ${{ env.device_name }}_${{ env.version }}
-          allowUpdates: true
-          makeLatest: true
-          bodyFile: release_notes.txt
-          token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: out/*
+        tag: ${{ env.version }}
+        name: ${{ env.device_name }}_${{ env.version }}
+        allowUpdates: true
+        makeLatest: true
+        bodyFile: release_notes.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
