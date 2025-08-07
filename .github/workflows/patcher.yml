@@ -147,7 +147,7 @@ jobs:
       with:
         artifacts: out/*
         tag: ${{ env.version }}
-        name: ${{ env.device_name }}_${{ env.version }}
+        name: ${{ env.device_name }}_${{ env.version }}_$(date +'%Y%m%d_%H%M%S')
         allowUpdates: true
         makeLatest: true
         bodyFile: release_notes.txt
