@@ -195,13 +195,7 @@ jobs:
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
         zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
 
-    - name: Copy aligned jars to Magisk module
-      run: |
-        mkdir -p magisk_module/system/system/framework
-        mkdir -p magisk_module/system_ext/framework
-        cp aligned_framework.jar magisk_module/system/system/framework/framework.jar
-        cp aligned_services.jar magisk_module/system/system/framework/services.jar
-        cp aligned_miui_services.jar magisk_module/system_ext/framework/miui-services.jar
+    # Magisk modülü ile ilgili adımlar kaldırıldı
 
     - name: Create Version From Link
       run: |
@@ -222,11 +216,10 @@ jobs:
         echo "version=${version}"
         echo "device_name=${device_name}"
 
-    - name: Zip Magisk module
+    # Sadece üç jar dosyasını zip'le
+    - name: Zip output files
       run: |
-        cd magisk_module
-        zip -r ../${{ env.device_name }}_${{ env.version }}.zip *
-        cd ..
+        zip ${{ env.device_name }}_${{ env.version }}.zip aligned_framework.jar aligned_services.jar aligned_miui_services.jar
         mkdir -p out
         chmod +w ${{ env.device_name }}_${{ env.version }}.zip
         mv ${{ env.device_name }}_${{ env.version }}.zip out/
