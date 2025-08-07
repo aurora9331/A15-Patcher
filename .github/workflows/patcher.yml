@@ -38,8 +38,8 @@ jobs:
     - name: smali ve baksmali dosyalarını kopyala
       run: |
         mkdir -p tools
-        cp files/tools/smali.jar tools/smali.jar
-        cp files/tools/baksmali.jar tools/baksmali.jar
+        cp tools/smali.jar tools/smali.jar
+        cp tools/baksmali.jar tools/baksmali.jar
 
     - name: Download JARs
       run: |
