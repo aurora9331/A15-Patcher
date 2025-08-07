@@ -35,11 +35,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
 
-    - name: Download smali and baksmali jars (much faster than git+build)
+    - name: smali ve baksmali dosyalarını kopyala
       run: |
         mkdir -p tools
-        wget -O tools/smali.jar https://github.com/JesusFreke/smali/releases/download/v2.5.2/smali-2.5.2.jar
-        wget -O tools/baksmali.jar https://github.com/JesusFreke/smali/releases/download/v2.5.2/baksmali-2.5.2.jar
+        cp files/tools/smali.jar tools/smali.jar
+        cp files/tools/baksmali.jar tools/baksmali.jar
 
     - name: Download JARs
       run: |
