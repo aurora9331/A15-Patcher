@@ -43,15 +43,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
-        pip install gdown
+        sudo apt-get update && sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
 
-    - name: Download and validate JARs
+    - name: Download and validate JARs + Extract in parallel
       run: |
-        curl -L -C - -o framework.jar "${{ github.event.inputs.framework_jar_url }}"
-        curl -L -C - -o services.jar "${{ github.event.inputs.services_jar_url }}"
-        curl -L -C - -o miui-services.jar "${{ github.event.inputs.miui_services_jar_url }}"
+        # Download JARs in parallel
+        curl -L -C - -o framework.jar "${{ github.event.inputs.framework_jar_url }}" &
+        curl -L -C - -o services.jar "${{ github.event.inputs.services_jar_url }}" &
+        curl -L -C - -o miui-services.jar "${{ github.event.inputs.miui_services_jar_url }}" &
+        wait
+        
+        # Validate downloads
         for jar in framework.jar services.jar miui-services.jar; do
           file_size=$(stat -c%s "$jar")
           if [ $file_size -lt 2000000 ]; then
@@ -59,144 +61,140 @@ jobs:
             exit 1
           fi
         done
+        
+        # Extract JARs in parallel
+        7z x framework.jar -oframework &
+        7z x services.jar -oservices &
+        7z x miui-services.jar -omiui_services &
+        wait
 
-    - name: Clone smali repository
-      run: git clone --depth=1 https://github.com/JesusFreke/smali.git
-
-    - name: Build smali and baksmali
+    - name: Decompile all dex files in parallel
       run: |
-        cd smali
-        ./gradlew build
-
-    - name: Extract framework.jar
-      run: 7z x framework.jar -oframework
-
-    - name: Extract services.jar
-      run: 7z x services.jar -oservices
-
-    - name: Extract miui-services.jar
-      run: 7z x miui-services.jar -omiui_services
-
-    - name: Decompile framework dex files if available
-      run: |
-        if [ -f framework/classes.dex ]; then
-          java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
-        else
-          echo "framework/classes.dex not found, skipping decompilation."
-        fi
-        for i in {2..5}; do
-          if [ -f "framework/classes${i}.dex" ]; then
-            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "framework/classes${i}.dex" -o "classes${i}"
+        # Function to decompile framework dex files
+        decompile_framework() {
+          if [ -f framework/classes.dex ]; then
+            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
           else
-            echo "framework/classes${i}.dex not found, skipping decompile."
+            echo "framework/classes.dex not found, skipping decompilation."
           fi
-        done
-
-    - name: Decompile services dex files if available
-      run: |
-        if [ -f services/classes.dex ]; then
-          java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} services/classes.dex -o services_classes
-        else
-          echo "services/classes.dex not found, skipping decompilation."
-        fi
-        for i in {2..5}; do
-          if [ -f "services/classes${i}.dex" ]; then
-            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "services/classes${i}.dex" -o "services_classes${i}"
+          for i in {2..5}; do
+            if [ -f "framework/classes${i}.dex" ]; then
+              java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "framework/classes${i}.dex" -o "classes${i}"
+            fi
+          done
+        }
+        
+        # Function to decompile services dex files  
+        decompile_services() {
+          if [ -f services/classes.dex ]; then
+            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} services/classes.dex -o services_classes
           else
-            echo "services/classes${i}.dex not found, skipping decompile."
+            echo "services/classes.dex not found, skipping decompilation."
           fi
-        done
+          for i in {2..5}; do
+            if [ -f "services/classes${i}.dex" ]; then
+              java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "services/classes${i}.dex" -o "services_classes${i}"
+            fi
+          done
+        }
+        
+        # Function to decompile miui-services dex file
+        decompile_miui_services() {
+          java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
+        }
+        
+        # Run decompilation in parallel
+        decompile_framework &
+        decompile_services &
+        decompile_miui_services &
+        wait
 
-    - name: Decompile miui-services dex file
+    - name: Modify framework and services smali files
       run: |
-        java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
+        python3 framework_patch.py &
+        python3 services_patch.py &
+        python3 miui-service_Patch.py &
+        wait
 
-    - name: Backup smali files
+    - name: Recompile all dex files in parallel
       run: |
-        cp -r classes classes_backup || echo "classes directory not found, skipping backup."
-        cp -r classes2 classes2_backup || echo "classes2 directory not found, skipping backup."
-        cp -r classes3 classes3_backup || echo "classes3 directory not found, skipping backup."
-        cp -r classes4 classes4_backup || echo "classes4 directory not found, skipping backup."
-        cp -r classes5 classes5_backup || echo "classes5 directory not found, skipping backup."
-        cp -r services_classes services_classes_backup || echo "services_classes directory not found, skipping backup."
-        cp -r services_classes2 services_classes2_backup || echo "services_classes2 directory not found, skipping backup."
-        cp -r services_classes3 services_classes3_backup || echo "services_classes3 directory not found, skipping backup."
-        cp -r services_classes4 services_classes4_backup || echo "services_classes4 directory not found, skipping backup."
-        cp -r services_classes5 services_classes5_backup || echo "services_classes5 directory not found, skipping backup."
-        cp -r miui_services_classes miui_services_classes_backup
-
-    - name: Modify framework smali
-      run: |
-        python3 framework_patch.py "${{ github.event.inputs.core }}"
-
-    - name: Modify services smali
-      run: |
-        python3 services_patch.py "${{ github.event.inputs.core }}"
-
-    - name: Modify miui-services smali files
-      run: |
-        python3 miui-service_Patch.py
-
-    - name: Recompile framework dex files
-      run: |
-        if [ -d classes ]; then
-          java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
-        else
-          echo "classes directory not found, skipping recompilation."
-        fi
-        for i in {2..5}; do
-          if [ -d "classes$i" ]; then
-            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
+        # Function to recompile framework dex files
+        recompile_framework() {
+          if [ -d classes ]; then
+            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
           else
-            echo "classes$i directory not found, skipping recompilation."
+            echo "classes directory not found, skipping recompilation."
           fi
-        done
-
-    - name: Recompile services dex files
-      run: |
-        if [ -d services_classes ]; then
-          java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
-        else
-          echo "services_classes directory not found, skipping recompilation."
-        fi
-        for i in {2..5}; do
-          if [ -d "services_classes$i" ]; then
-            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
+          for i in {2..5}; do
+            if [ -d "classes$i" ]; then
+              java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
+            fi
+          done
+        }
+        
+        # Function to recompile services dex files
+        recompile_services() {
+          if [ -d services_classes ]; then
+            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
           else
-            echo "services_classes$i directory not found, skipping recompilation."
+            echo "services_classes directory not found, skipping recompilation."
           fi
-        done
+          for i in {2..5}; do
+            if [ -d "services_classes$i" ]; then
+              java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
+            fi
+          done
+        }
+        
+        # Function to recompile miui-services dex file
+        recompile_miui_services() {
+          java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
+        }
+        
+        # Run recompilation in parallel
+        recompile_framework &
+        recompile_services &
+        recompile_miui_services &
+        wait
 
-    - name: Recompile miui-services dex file
+    - name: Recompile and align JARs in parallel
       run: |
-        java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
+        # Function to recompile and align framework
+        process_framework() {
+          cd framework
+          7z a -tzip ../framework_new.zip *
+          cd ..
+          zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar
+          rm framework_new.zip
+        }
+        
+        # Function to recompile and align services
+        process_services() {
+          cd services
+          7z a -tzip ../services_new.zip *
+          cd ..
+          zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
+          rm services_new.zip
+        }
+        
+        # Function to recompile and align miui-services
+        process_miui_services() {
+          cd miui_services
+          7z a -tzip ../miui_services_new.zip *
+          cd ..
+          zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
+          rm miui_services_new.zip
+        }
+        
+        # Process JARs in parallel
+        process_framework &
+        process_services &
+        process_miui_services &
+        wait
 
-    - name: Recompile framework.jar
+    - name: Create version info and prepare final package
       run: |
-        cd framework
-        7z a -tzip ../framework_new.zip *
-        cd ..
-
-    - name: Recompile services.jar
-      run: |
-        cd services
-        7z a -tzip ../services_new.zip *
-        cd ..
-
-    - name: Recompile miui-services.jar
-      run: |
-        cd miui_services
-        7z a -tzip ../miui_services_new.zip *
-        cd ..
-
-    - name: Align the zips
-      run: |
-        zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar
-        zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
-        zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
-
-    - name: Create Version From Link
-      run: |
+        # Create version from link in parallel with preparing final structure
         if [ -z "${{ github.event.inputs.custom_version }}" ]; then
           framework_url="${{ github.event.inputs.framework_jar_url }}"
           version=$(echo $framework_url | grep -oP '(?<=V)[^/]*(?=/system)')
@@ -204,6 +202,7 @@ jobs:
         else
           echo "version=${{ github.event.inputs.custom_version }}" >> $GITHUB_ENV
         fi
+        
         if [ -z "${{ github.event.inputs.custom_device_name }}" ]; then
           framework_url="${{ github.event.inputs.framework_jar_url }}"
           device_name=$(echo $framework_url | grep -oP '(?<=redmi/)[^/]*(?=/-)')
@@ -211,32 +210,23 @@ jobs:
         else
           echo "device_name=${{ github.event.inputs.custom_device_name }}" >> $GITHUB_ENV
         fi
-        echo "version=${version}"
-        echo "device_name=${device_name}"
+        
+        # Prepare final package structure efficiently
+        mkdir -p module/system/system/framework module/system_ext/framework out
+        cp aligned_framework.jar module/system/system/framework/framework.jar
+        cp aligned_services.jar module/system/system/framework/services.jar
+        cp aligned_miui_services.jar module/system_ext/framework/miui-services.jar
 
-    - name: Rename output jars for zip
+    - name: Create final package and release notes
       run: |
-        cp aligned_framework.jar framework.jar
-        cp aligned_services.jar services.jar
-        cp aligned_miui_services.jar miui-services.jar
-
-    # İSTEDİĞİNİZ KLASÖR YAPISIYLA ZIP OLUŞTURMA ADIMI
-    - name: Zip jars with requested folder structure
-      run: |
-        mkdir -p module/system/system/framework
-        mkdir -p module/system_ext/framework
-        cp framework.jar module/system/system/framework/framework.jar
-        cp services.jar module/system/system/framework/services.jar
-        cp miui-services.jar module/system_ext/framework/miui-services.jar
+        # Create final ZIP package
         cd module
         zip -r ../${{ env.device_name }}_${{ env.version }}.zip .
         cd ..
-        mkdir -p out
         chmod +w ${{ env.device_name }}_${{ env.version }}.zip
         mv ${{ env.device_name }}_${{ env.version }}.zip out/
-
-    - name: Create Release Notes
-      run: |
+        
+        # Create release notes
         echo "## Release Notes" > release_notes.txt
         echo "- Built modified jars from commit ${{ github.sha }}" >> release_notes.txt
         echo "- Version: ${{ env.version }}" >> release_notes.txt
