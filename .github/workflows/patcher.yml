@@ -1,4 +1,4 @@
-name: Framework ve Servisleri Düzenle
+name: A15-Patcher
 
 on:
   workflow_dispatch:
