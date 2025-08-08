@@ -45,10 +45,10 @@ jobs:
       run: |
         sudo apt-get update -y && sudo apt-get install -y zipalign p7zip-full python3 aria2 jq
 
-    - name: Download smali & baksmali jars
+    - name: Use smali & baksmali jars from repo
       run: |
-        wget -q https://github.com/JesusFreke/smali/releases/download/v2.5.2/smali-2.5.2.jar -O smali.jar
-        wget -q https://github.com/JesusFreke/smali/releases/download/v2.5.2/baksmali-2.5.2.jar -O baksmali.jar
+       cp ./tools/smali.jar
+       cp ./tools/baksmali.jar
 
     - name: Download and validate JARs
       run: |
