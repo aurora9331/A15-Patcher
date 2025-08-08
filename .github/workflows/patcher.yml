@@ -171,19 +171,19 @@ jobs:
     - name: Recompile framework.jar
       run: |
         cd framework
-        7z a -tzip ../framework_new.zip *
+        7z a -tzip -mx=0 ../framework_new.zip *
         cd ..
 
     - name: Recompile services.jar
       run: |
         cd services
-        7z a -tzip ../services_new.zip *
+        7z a -tzip -mx=0 ../services_new.zip *
         cd ..
 
     - name: Recompile miui-services.jar
       run: |
         cd miui_services
-        7z a -tzip ../miui_services_new.zip *
+        7z a -tzip -mx=0 ../miui_services_new.zip *
         cd ..
 
     - name: Align the zips
