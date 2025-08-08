@@ -129,7 +129,7 @@ jobs:
         cp services.jar module/system/system/framework/services.jar
         cp miui-services.jar module/system_ext/framework/miui-services.jar
         cd module
-        zip -r ../${{ env.device_name }}_${{ env.version }}.zip .
+        zip -0 -r ../${{ env.device_name }}_${{ env.version }}.zip .
         cd ..
         mkdir -p out
         chmod +w ${{ env.device_name }}_${{ env.version }}.zip
