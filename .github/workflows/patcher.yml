@@ -47,8 +47,8 @@ jobs:
 
     - name: Use smali & baksmali jars from repo
       run: |
-       cp ./tools/smali.jar
-       cp ./tools/baksmali.jar
+       cp ./tools/smali.jar .
+       cp ./tools/baksmali.jar .
 
     - name: Download and validate JARs
       run: |
