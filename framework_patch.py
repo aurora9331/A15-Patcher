@@ -4,22 +4,31 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def find_all_files(rootdirs, relpath):
+    """Tüm rootdirs altında relpath'e uyan tüm dosya yollarını bulur."""
+    found = []
+    for rootdir in rootdirs:
+        for dirpath, _, files in os.walk(rootdir):
+            for file in files:
+                full_path = os.path.join(dirpath, file)
+                if full_path.endswith(relpath):
+                    found.append(full_path)
+    return found
+
 def patch_package_parser(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    # Patch 1: unsafeGetCertsWithoutVerification
     pattern1 = re.compile(
         r'invoke-static \{v2, v0, v1\}, Landroid/util/apk/ApkSignatureVerifier;->unsafeGetCertsWithoutVerification\(Landroid/content/pm/parsing/result/ParseInput;Ljava/lang/String;I\)Landroid/content/pm/parsing/result/ParseResult;')
     out = []
     for line in lines:
         if pattern1.search(line):
             out.append("    const/4 v1, 0x1\n")
-            logging.info("Patched: const/4 v1, 0x1 before unsafeGetCertsWithoutVerification")
+            logging.info(f"Patched: const/4 v1, 0x1 before unsafeGetCertsWithoutVerification in {file_path}")
         out.append(line)
     lines = out
 
-    # Patch 2: const/4 v5, 0x1 above if-nez v5, :cond_x before sharedUserId error (all occurrences)
     target_string = "\"<manifest> specifies bad sharedUserId name \\\"\""
     if_nez_pattern = re.compile(r'if-nez v5, :cond_\w+')
     indexes = [i for i, l in enumerate(lines) if target_string in l]
@@ -27,7 +36,7 @@ def patch_package_parser(file_path):
         for j in range(idx-1, -1, -1):
             if if_nez_pattern.search(lines[j]):
                 lines.insert(j, "    const/4 v5, 0x1\n")
-                logging.info("Patched: const/4 v5, 0x1 above if-nez v5 before sharedUserId error")
+                logging.info(f"Patched: const/4 v5, 0x1 above if-nez v5 before sharedUserId error in {file_path}")
                 break
     with open(file_path, 'w') as file:
         file.writelines(lines)
@@ -39,7 +48,7 @@ def patch_package_parser_exception(file_path):
     for line in lines:
         if re.search(r'iput p1, p0, Landroid/content/pm/PackageParser\$PackageParserException;->error:I', line):
             out.append("    const/4 p1, 0x0\n")
-            logging.info("Patched: const/4 p1, 0x0 above iput p1 in PackageParser$PackageParserException")
+            logging.info(f"Patched: const/4 p1, 0x0 above iput p1 in {file_path}")
         out.append(line)
     with open(file_path, 'w') as file:
         file.writelines(out)
@@ -72,7 +81,6 @@ def patch_signingdetails(file_path):
                 method_start_line = ""
                 registers_line = ""
                 continue
-            # skip all method body
             continue
         found = False
         for key, pattern in method_patterns.items():
@@ -92,7 +100,6 @@ def patch_apksignatureverifier(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
     out = []
-    # Patch getMinimumSignatureSchemeVersionForTargetSdk: return 0
     in_method = False
     method_pattern = re.compile(r'\.method.*getMinimumSignatureSchemeVersionForTargetSdk\(I\)I')
     method_start_line = ""
@@ -120,14 +127,13 @@ def patch_apksignatureverifier(file_path):
         out.append(line)
     lines = out
 
-    # Patch: const/4 p3, 0x0 above verifyV1Signature (all occurrences)
     out = []
     pattern = re.compile(
         r'invoke-static \{p0, p1, p3\}, Landroid/util/apk/ApkSignatureVerifier;->verifyV1Signature\(Landroid/content/pm/parsing/result/ParseInput;Ljava/lang/String;Z\)Landroid/content/pm/parsing/result/ParseResult;')
     for line in lines:
         if pattern.search(line):
             out.append("    const/4 p3, 0x0\n")
-            logging.info("Patched: const/4 p3, 0x0 above verifyV1Signature")
+            logging.info(f"Patched: const/4 p3, 0x0 above verifyV1Signature in {file_path}")
         out.append(line)
     with open(file_path, 'w') as file:
         file.writelines(out)
@@ -200,10 +206,9 @@ def patch_strictjarfile(file_path):
         if invoke_virtual_pattern.search(lines[i]):
             out.append(lines[i])
             i += 1
-            # Remove all if-eqz v6, :cond_x and :cond_x labels after findEntry
             removed_if = False
             while i < len(lines) and (if_eqz_pattern.search(lines[i]) or label_pattern.search(lines[i])):
-                logging.info("Patched: Removed if-eqz v6, :cond_x or label after findEntry")
+                logging.info(f"Patched: Removed if-eqz v6, :cond_x or label after findEntry in {file_path}")
                 i += 1
                 removed_if = True
             if removed_if:
@@ -224,59 +229,47 @@ def patch_parsingpackageutils(file_path):
         for j in range(idx-1, -1, -1):
             if if_eqz_pattern.search(lines[j]):
                 lines.insert(j, "    const/4 v4, 0x0\n")
-                logging.info("Patched: const/4 v4, 0x0 above if-eqz v4 before sharedUserId error")
+                logging.info(f"Patched: const/4 v4, 0x0 above if-eqz v4 before sharedUserId error in {file_path}")
                 break
     with open(file_path, 'w') as file:
         file.writelines(lines)
 
 def main():
-    directories = ["classes", "classes2", "classes3", "classes4", "classes5"]
-    for directory in directories:
-        logging.info(f"Scanning directory: {directory}")
-        # Patch android/content/pm/PackageParser.smali
-        pkg_parser = os.path.join(directory, 'android/content/pm/PackageParser.smali')
-        if os.path.exists(pkg_parser):
-            patch_package_parser(pkg_parser)
-        # Patch android/content/pm/PackageParser$PackageParserException.smali
-        pkg_parser_exc = os.path.join(directory, 'android/content/pm/PackageParser$PackageParserException.smali')
-        if os.path.exists(pkg_parser_exc):
-            patch_package_parser_exception(pkg_parser_exc)
-        # Patch android/content/pm/SigningDetails.smali
-        signingdetails = os.path.join(directory, 'android/content/pm/SigningDetails.smali')
-        if os.path.exists(signingdetails):
-            patch_signingdetails(signingdetails)
-        # Patch android/content/pm/PackageParser$SigningDetails.smali
-        pkg_parser_signingdetails = os.path.join(directory, 'android/content/pm/PackageParser$SigningDetails.smali')
-        if os.path.exists(pkg_parser_signingdetails):
-            patch_signingdetails(pkg_parser_signingdetails)
-        # Patch android/util/apk/ApkSignatureSchemeV2Verifier.smali
-        v2ver = os.path.join(directory, 'android/util/apk/ApkSignatureSchemeV2Verifier.smali')
-        if os.path.exists(v2ver):
-            patch_apksignatureschemeV2V3(v2ver, register='v0')
-        # Patch android/util/apk/ApkSignatureSchemeV3Verifier.smali
-        v3ver = os.path.join(directory, 'android/util/apk/ApkSignatureSchemeV3Verifier.smali')
-        if os.path.exists(v3ver):
-            patch_apksignatureschemeV2V3(v3ver, register='v0')
-        # Patch android/util/apk/ApkSignatureVerifier.smali
-        verifier = os.path.join(directory, 'android/util/apk/ApkSignatureVerifier.smali')
-        if os.path.exists(verifier):
-            patch_apksignatureverifier(verifier)
-        # Patch android/util/apk/ApkSigningBlockUtils.smali
-        signingblock = os.path.join(directory, 'android/util/apk/ApkSigningBlockUtils.smali')
-        if os.path.exists(signingblock):
-            patch_apksigningblockutils(signingblock)
-        # Patch android/util/jar/StrictJarVerifier.smali
-        jarverifier = os.path.join(directory, 'android/util/jar/StrictJarVerifier.smali')
-        if os.path.exists(jarverifier):
-            patch_strictjarverifier(jarverifier)
-        # Patch android/util/jar/StrictJarFile.smali
-        jarfile = os.path.join(directory, 'android/util/jar/StrictJarFile.smali')
-        if os.path.exists(jarfile):
-            patch_strictjarfile(jarfile)
-        # Patch com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali
-        parsingutils = os.path.join(directory, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali')
-        if os.path.exists(parsingutils):
-            patch_parsingpackageutils(parsingutils)
+    rootdirs = ["classes", "classes2", "classes3", "classes4", "classes5"]
+    # Tüm dosyalarda recursive bul-patch uygula
+    # 1
+    for file_path in find_all_files(rootdirs, 'android/content/pm/PackageParser.smali'):
+        patch_package_parser(file_path)
+    # 2
+    for file_path in find_all_files(rootdirs, 'android/content/pm/PackageParser$PackageParserException.smali'):
+        patch_package_parser_exception(file_path)
+    # 3
+    for file_path in find_all_files(rootdirs, 'android/content/pm/SigningDetails.smali'):
+        patch_signingdetails(file_path)
+    # 4
+    for file_path in find_all_files(rootdirs, 'android/content/pm/PackageParser$SigningDetails.smali'):
+        patch_signingdetails(file_path)
+    # 5
+    for file_path in find_all_files(rootdirs, 'android/util/apk/ApkSignatureSchemeV2Verifier.smali'):
+        patch_apksignatureschemeV2V3(file_path, register='v0')
+    # 6
+    for file_path in find_all_files(rootdirs, 'android/util/apk/ApkSignatureSchemeV3Verifier.smali'):
+        patch_apksignatureschemeV2V3(file_path, register='v0')
+    # 7
+    for file_path in find_all_files(rootdirs, 'android/util/apk/ApkSignatureVerifier.smali'):
+        patch_apksignatureverifier(file_path)
+    # 8
+    for file_path in find_all_files(rootdirs, 'android/util/apk/ApkSigningBlockUtils.smali'):
+        patch_apksigningblockutils(file_path)
+    # 9
+    for file_path in find_all_files(rootdirs, 'android/util/jar/StrictJarVerifier.smali'):
+        patch_strictjarverifier(file_path)
+    # 10
+    for file_path in find_all_files(rootdirs, 'android/util/jar/StrictJarFile.smali'):
+        patch_strictjarfile(file_path)
+    # 11
+    for file_path in find_all_files(rootdirs, 'com/android/internal/pm/pkg/parsing/ParsingPackageUtils.smali'):
+        patch_parsingpackageutils(file_path)
 
 if __name__ == "__main__":
     main()
