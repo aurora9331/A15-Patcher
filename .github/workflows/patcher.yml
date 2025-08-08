@@ -221,12 +221,14 @@ jobs:
 
     - name: Zip Magisk module
       run: |
-        cd magisk_module
-        zip -r ../${{ env.device_name }}_${{ env.version }}.zip *
-        cd ..
-        mkdir -p out
-        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
-        mv ${{ env.device_name }}_${{ env.version }}.zip out/
+       cd magisk_module
+       timestamp=$(date +"_%Y%m%d%H%M%S")
+       zip -r ../${{ env.device_name }}_${{ env.version }}${timestamp}.zip *
+       cd ..
+       mkdir -p out
+       chmod +w ${{ env.device_name }}_${{ env.version }}${timestamp}.zip
+       mv ${{ env.device_name }}_${{ env.version }}${timestamp}.zip out/
+       echo "timestamp=${timestamp}" >> $GITHUB_ENV
 
     - name: Create Release Notes
       run: |
