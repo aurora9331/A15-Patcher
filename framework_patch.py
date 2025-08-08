@@ -8,210 +8,189 @@ def patch_package_parser(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    # Patch 1: invoke-static ... unsafeGetCertsWithoutVerification
+    # Patch 1: unsafeGetCertsWithoutVerification
     pattern1 = re.compile(
         r'invoke-static \{v2, v0, v1\}, Landroid/util/apk/ApkSignatureVerifier;->unsafeGetCertsWithoutVerification\(Landroid/content/pm/parsing/result/ParseInput;Ljava/lang/String;I\)Landroid/content/pm/parsing/result/ParseResult;')
-    modified_lines = []
+    out = []
     for line in lines:
         if pattern1.search(line):
-            modified_lines.append("    const/4 v1, 0x1\n")
+            out.append("    const/4 v1, 0x1\n")
             logging.info("Patched: const/4 v1, 0x1 before unsafeGetCertsWithoutVerification")
-        modified_lines.append(line)
-    lines = modified_lines
+        out.append(line)
+    lines = out
 
-    # Patch 2: const/4 v5, 0x1 above if-nez v5, :cond_x before sharedUserId error
+    # Patch 2: const/4 v5, 0x1 above if-nez v5, :cond_x before sharedUserId error (all occurrences)
     target_string = "\"<manifest> specifies bad sharedUserId name \\\"\""
     if_nez_pattern = re.compile(r'if-nez v5, :cond_\w+')
-    modified_lines = []
-    i = 0
-    while i < len(lines):
-        if target_string in lines[i]:
-            # Geriye doğru if-nez v5, :cond_x bul
-            for j in range(i-1, -1, -1):
-                if if_nez_pattern.search(lines[j]):
-                    modified_lines = lines[:j] + ["    const/4 v5, 0x1\n"] + lines[j:]
-                    logging.info("Patched: const/4 v5, 0x1 above if-nez v5 before sharedUserId error")
-                    break
-            else:
-                modified_lines = lines
-            break
-        i += 1
-    if modified_lines:
-        lines = modified_lines
+    indexes = [i for i, l in enumerate(lines) if target_string in l]
+    for idx in indexes:
+        for j in range(idx-1, -1, -1):
+            if if_nez_pattern.search(lines[j]):
+                lines.insert(j, "    const/4 v5, 0x1\n")
+                logging.info("Patched: const/4 v5, 0x1 above if-nez v5 before sharedUserId error")
+                break
     with open(file_path, 'w') as file:
         file.writelines(lines)
 
 def patch_package_parser_exception(file_path):
-    # Add const/4 p1, 0x0 above iput p1, ...
     with open(file_path, 'r') as file:
         lines = file.readlines()
-    modified_lines = []
+    out = []
     for line in lines:
         if re.search(r'iput p1, p0, Landroid/content/pm/PackageParser\$PackageParserException;->error:I', line):
-            modified_lines.append("    const/4 p1, 0x0\n")
+            out.append("    const/4 p1, 0x0\n")
             logging.info("Patched: const/4 p1, 0x0 above iput p1 in PackageParser$PackageParserException")
-        modified_lines.append(line)
+        out.append(line)
     with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
+        file.writelines(out)
 
 def patch_signingdetails(file_path):
-    # checkCapability, hasAncestorOrSelf: return 1
     with open(file_path, 'r') as file:
         lines = file.readlines()
-    modified_lines = []
-    in_method = False
-    method_type = None
+    out = []
     method_patterns = {
         "checkCapability": re.compile(r'\.method.*checkCapability\(.*\)Z'),
         "hasAncestorOrSelf": re.compile(r'\.method.*hasAncestorOrSelf\(.*\)Z'),
     }
-    original_registers_line = ""
+    in_method = False
+    method_type = None
     method_start_line = ""
+    registers_line = ""
     for line in lines:
         if in_method:
             if line.strip().startswith('.registers'):
-                original_registers_line = line
+                registers_line = line
                 continue
             if line.strip() == '.end method':
-                modified_lines.append(method_start_line)
-                modified_lines.append(original_registers_line)
-                modified_lines.append("    const/4 v0, 0x1\n")
-                modified_lines.append("    return v0\n")
-                modified_lines.append(line)
+                out.append(method_start_line)
+                out.append(registers_line)
+                out.append("    const/4 v0, 0x1\n")
+                out.append("    return v0\n")
+                out.append(line)
                 in_method = False
                 method_type = None
-                original_registers_line = ""
                 method_start_line = ""
-            else:
+                registers_line = ""
                 continue
+            # skip all method body
+            continue
+        found = False
         for key, pattern in method_patterns.items():
             if pattern.search(line):
                 in_method = True
                 method_type = key
                 method_start_line = line
+                found = True
                 break
-        if not in_method:
-            modified_lines.append(line)
+        if not found and not in_method:
+            out.append(line)
     with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
+        file.writelines(out)
     logging.info(f"Patched: {file_path}")
 
 def patch_apksignatureverifier(file_path):
-    # getMinimumSignatureSchemeVersionForTargetSdk: return 0
-    # Patch invoke-static {p0, p1, p3} ... above: const/4 p3, 0x0
     with open(file_path, 'r') as file:
         lines = file.readlines()
-    # Patch method
-    modified_lines = []
+    out = []
+    # Patch getMinimumSignatureSchemeVersionForTargetSdk: return 0
     in_method = False
-    method_type = None
-    method_patterns = {
-        "getMinimumSignatureSchemeVersionForTargetSdk": re.compile(r'\.method.*getMinimumSignatureSchemeVersionForTargetSdk\(I\)I'),
-    }
-    original_registers_line = ""
+    method_pattern = re.compile(r'\.method.*getMinimumSignatureSchemeVersionForTargetSdk\(I\)I')
     method_start_line = ""
-    for line in lines:
+    registers_line = ""
+    for idx, line in enumerate(lines):
         if in_method:
             if line.strip().startswith('.registers'):
-                original_registers_line = line
+                registers_line = line
                 continue
             if line.strip() == '.end method':
-                modified_lines.append(method_start_line)
-                modified_lines.append(original_registers_line)
-                modified_lines.append("    const/4 v0, 0x0\n")
-                modified_lines.append("    return v0\n")
-                modified_lines.append(line)
+                out.append(method_start_line)
+                out.append(registers_line)
+                out.append("    const/4 v0, 0x0\n")
+                out.append("    return v0\n")
+                out.append(line)
                 in_method = False
-                method_type = None
-                original_registers_line = ""
                 method_start_line = ""
-            else:
+                registers_line = ""
                 continue
-        for key, pattern in method_patterns.items():
-            if pattern.search(line):
-                in_method = True
-                method_type = key
-                method_start_line = line
-                break
-        if not in_method:
-            modified_lines.append(line)
-    lines = modified_lines
-    # Patch invoke-static
-    modified_lines = []
-    pattern = re.compile(
-        r'invoke-static \{p0, p1, p3\}, Landroid/util/apk/ApkSignatureVerifier;->verifyV1Signature\(Landroid/content/pm/parsing/result/ParseInput;Ljava/lang/String;Z\)Landroid/content/pm/parsing/result/ParseResult;')
-    for line in lines:
-        if pattern.search(line):
-            modified_lines.append("    const/4 p3, 0x0\n")
-            logging.info("Patched: const/4 p3, 0x0 above verifyV1Signature")
-        modified_lines.append(line)
-    with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
-
-def patch_apksignatureschemeV2V3(file_path, register='v0'):
-    # Patch invoke-static ... MessageDigest->isEqual ... move-result vX -> const/4 vX, 0x1
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-    modified_lines = []
-    is_next_move_result = False
-    for line in lines:
-        if 'Ljava/security/MessageDigest;->isEqual([B[B)Z' in line:
-            is_next_move_result = True
-            modified_lines.append(line)
             continue
-        if is_next_move_result and re.match(r'\s*move-result\s+(' + register + r')', line):
-            modified_lines.append(f"    const/4 {register}, 0x1\n")
-            logging.info(f"Patched: const/4 {register}, 0x1 after isEqual in {file_path}")
-            is_next_move_result = False
-            continue
-        modified_lines.append(line)
-        is_next_move_result = False
-    with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
-
-def patch_apksigningblockutils(file_path):
-    # Patch invoke-static ... MessageDigest->isEqual ... move-result v7 -> const/4 v7, 0x1
-    patch_apksignatureschemeV2V3(file_path, register='v7')
-
-def patch_strictjarverifier(file_path):
-    # Patch verifyMessageDigest method: return 1
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-    modified_lines = []
-    in_method = False
-    method_pattern = re.compile(r'\.method.*verifyMessageDigest\(\[B\[B\)Z')
-    original_registers_line = ""
-    method_start_line = ""
-    for line in lines:
-        if in_method:
-            if line.strip().startswith('.registers'):
-                original_registers_line = line
-                continue
-            if line.strip() == '.end method':
-                modified_lines.append(method_start_line)
-                modified_lines.append(original_registers_line)
-                modified_lines.append("    const/4 v0, 0x1\n")
-                modified_lines.append("    return v0\n")
-                modified_lines.append(line)
-                in_method = False
-                original_registers_line = ""
-                method_start_line = ""
-            else:
-                continue
         if method_pattern.search(line):
             in_method = True
             method_start_line = line
             continue
-        if not in_method:
-            modified_lines.append(line)
-    with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
+        out.append(line)
+    lines = out
 
-def patch_strictjarfile(file_path):
-    # Remove if-eqz v6, :cond_x and the next :cond_x label after findEntry
+    # Patch: const/4 p3, 0x0 above verifyV1Signature (all occurrences)
+    out = []
+    pattern = re.compile(
+        r'invoke-static \{p0, p1, p3\}, Landroid/util/apk/ApkSignatureVerifier;->verifyV1Signature\(Landroid/content/pm/parsing/result/ParseInput;Ljava/lang/String;Z\)Landroid/content/pm/parsing/result/ParseResult;')
+    for line in lines:
+        if pattern.search(line):
+            out.append("    const/4 p3, 0x0\n")
+            logging.info("Patched: const/4 p3, 0x0 above verifyV1Signature")
+        out.append(line)
+    with open(file_path, 'w') as file:
+        file.writelines(out)
+
+def patch_apksignatureschemeV2V3(file_path, register='v0'):
     with open(file_path, 'r') as file:
         lines = file.readlines()
-    modified_lines = []
+    out = []
+    is_next_move_result = False
+    for line in lines:
+        if 'Ljava/security/MessageDigest;->isEqual([B[B)Z' in line:
+            is_next_move_result = True
+            out.append(line)
+            continue
+        if is_next_move_result and re.match(r'\s*move-result\s+(' + register + r')', line):
+            out.append(f"    const/4 {register}, 0x1\n")
+            logging.info(f"Patched: const/4 {register}, 0x1 after isEqual in {file_path}")
+            is_next_move_result = False
+            continue
+        out.append(line)
+        is_next_move_result = False
+    with open(file_path, 'w') as file:
+        file.writelines(out)
+
+def patch_apksigningblockutils(file_path):
+    patch_apksignatureschemeV2V3(file_path, register='v7')
+
+def patch_strictjarverifier(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    out = []
+    in_method = False
+    method_pattern = re.compile(r'\.method.*verifyMessageDigest\(\[B\[B\)Z')
+    method_start_line = ""
+    registers_line = ""
+    for line in lines:
+        if in_method:
+            if line.strip().startswith('.registers'):
+                registers_line = line
+                continue
+            if line.strip() == '.end method':
+                out.append(method_start_line)
+                out.append(registers_line)
+                out.append("    const/4 v0, 0x1\n")
+                out.append("    return v0\n")
+                out.append(line)
+                in_method = False
+                method_start_line = ""
+                registers_line = ""
+                continue
+            continue
+        if method_pattern.search(line):
+            in_method = True
+            method_start_line = line
+            continue
+        out.append(line)
+    with open(file_path, 'w') as file:
+        file.writelines(out)
+
+def patch_strictjarfile(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    out = []
     i = 0
     invoke_virtual_pattern = re.compile(
         r'invoke-virtual \{p0, v5\}, Landroid/util/jar/StrictJarFile;->findEntry\(Ljava/lang/String;\)Ljava/util/zip/ZipEntry;')
@@ -219,41 +198,34 @@ def patch_strictjarfile(file_path):
     label_pattern = re.compile(r':cond_\w+')
     while i < len(lines):
         if invoke_virtual_pattern.search(lines[i]):
-            modified_lines.append(lines[i])
+            out.append(lines[i])
             i += 1
-            if i < len(lines) and if_eqz_pattern.search(lines[i]):
-                logging.info("Patched: Removed if-eqz v6, :cond_x after findEntry")
+            # Remove all if-eqz v6, :cond_x and :cond_x labels after findEntry
+            removed_if = False
+            while i < len(lines) and (if_eqz_pattern.search(lines[i]) or label_pattern.search(lines[i])):
+                logging.info("Patched: Removed if-eqz v6, :cond_x or label after findEntry")
                 i += 1
-                if i < len(lines) and label_pattern.search(lines[i]):
-                    logging.info("Patched: Removed :cond_x after if-eqz v6")
-                    i += 1
-            continue
-        modified_lines.append(lines[i])
+                removed_if = True
+            if removed_if:
+                continue
+        if i < len(lines):
+            out.append(lines[i])
         i += 1
     with open(file_path, 'w') as file:
-        file.writelines(modified_lines)
+        file.writelines(out)
 
 def patch_parsingpackageutils(file_path):
-    # const/4 v4, 0x0 above if-eqz v4, :cond_x before sharedUserId error
     with open(file_path, 'r') as file:
         lines = file.readlines()
     target_string = "\"<manifest> specifies bad sharedUserId name \\\"\""
     if_eqz_pattern = re.compile(r'if-eqz v4, :cond_\w+')
-    modified_lines = []
-    i = 0
-    while i < len(lines):
-        if target_string in lines[i]:
-            for j in range(i-1, -1, -1):
-                if if_eqz_pattern.search(lines[j]):
-                    modified_lines = lines[:j] + ["    const/4 v4, 0x0\n"] + lines[j:]
-                    logging.info("Patched: const/4 v4, 0x0 above if-eqz v4 before sharedUserId error")
-                    break
-            else:
-                modified_lines = lines
-            break
-        i += 1
-    if modified_lines:
-        lines = modified_lines
+    indexes = [i for i, l in enumerate(lines) if target_string in l]
+    for idx in indexes:
+        for j in range(idx-1, -1, -1):
+            if if_eqz_pattern.search(lines[j]):
+                lines.insert(j, "    const/4 v4, 0x0\n")
+                logging.info("Patched: const/4 v4, 0x0 above if-eqz v4 before sharedUserId error")
+                break
     with open(file_path, 'w') as file:
         file.writelines(lines)
 
