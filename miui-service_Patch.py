@@ -9,8 +9,7 @@ def patch(filepath):
     with open(filepath, 'r') as file:
         lines = file.readlines()
 
-    if not any('invoke-custom' in line for line in lines):
-        return
+    # Removed restrictive check: if not any('invoke-custom' in line for line in lines): return
     modified_lines = []
     in_method = False
     method_type = None
