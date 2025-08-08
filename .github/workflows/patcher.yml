@@ -66,8 +66,8 @@ jobs:
 
     - name: Patch smali files 
       run: |
-        python3 framework_patch.py "${{ github.event.inputs.core }}" &
-        python3 services_patch.py "${{ github.event.inputs.core }}" &
+        python3 framework_patch.py &
+        python3 services_patch.py &
         python3 miui-service_Patch.py &
         wait
 
