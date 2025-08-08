@@ -115,6 +115,13 @@ jobs:
           echo "device_name=${{ github.event.inputs.custom_device_name }}" >> $GITHUB_ENV
         fi
 
+    - name: Create Timestamp and ZIP Name
+      run: |
+        timestamp=$(date +'%Y%m%d_%H%M%S')
+        zip_name="${{ env.device_name }}_${{ env.version }}_${timestamp}.zip"
+        echo "timestamp=${timestamp}" >> $GITHUB_ENV
+        echo "ZIP_NAME=${zip_name}" >> $GITHUB_ENV
+
     - name: Rename output jars for zip
       run: |
         cp aligned_framework.jar framework.jar
@@ -129,11 +136,11 @@ jobs:
         cp services.jar module/system/system/framework/services.jar
         cp miui-services.jar module/system_ext/framework/miui-services.jar
         cd module
-        zip -r ../${{ env.device_name }}_${{ env.version }}.zip .
+        zip -r ../${{ env.ZIP_NAME }} .
         cd ..
         mkdir -p out
-        chmod +w ${{ env.device_name }}_${{ env.version }}.zip
-        mv ${{ env.device_name }}_${{ env.version }}.zip out/
+        chmod +w ${{ env.ZIP_NAME }}
+        mv ${{ env.ZIP_NAME }} out/
 
     - name: Create Release Notes
       run: |
@@ -145,9 +152,9 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: out/*
+        artifacts: out/${{ env.ZIP_NAME }}
         tag: ${{ env.version }}
-        name: ${{ env.device_name }}_${{ env.version }}_$(date +'%Y%m%d_%H%M%S')
+        name: ${{ env.ZIP_NAME }}
         allowUpdates: true
         makeLatest: true
         bodyFile: release_notes.txt
