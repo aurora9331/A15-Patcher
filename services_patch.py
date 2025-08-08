@@ -9,9 +9,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def patch(filepath):
     with open(filepath, 'r') as file:
         lines = file.readlines()
-
-    if not any('invoke-custom' in line for line in lines):
-        return
     modified_lines = []
     in_method = False
     method_type = None

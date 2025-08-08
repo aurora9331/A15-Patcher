@@ -1,0 +1,28 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.cache/
+
+# Build artifacts
+*.dex
+*.jar
+*.zip
+framework/
+services/
+miui_services/
+classes/
+classes2/
+classes3/
+classes4/
+classes5/
+services_classes/
+services_classes2/
+services_classes3/
+services_classes4/
+services_classes5/
+miui_services_classes/
+out/
