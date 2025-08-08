@@ -192,7 +192,7 @@ jobs:
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
         zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
 
-    - name: Copy aligned jars to Magisk module
+    - name: Copy aligned jars to system directories
       run: |
         mkdir -p system/system/framework
         mkdir -p system_ext/framework
@@ -219,12 +219,10 @@ jobs:
         echo "version=${version}"
         echo "device_name=${device_name}"
 
-    - name: Zip Magisk module
+    - name: Create system module archive
       run: |
-       cd magisk_module
        timestamp=$(date +"_%Y%m%d%H%M%S")
-       zip -r ../${{ env.device_name }}_${{ env.version }}${timestamp}.zip *
-       cd ..
+       zip -r ${{ env.device_name }}_${{ env.version }}${timestamp}.zip system system_ext
        mkdir -p out
        chmod +w ${{ env.device_name }}_${{ env.version }}${timestamp}.zip
        mv ${{ env.device_name }}_${{ env.version }}${timestamp}.zip out/
