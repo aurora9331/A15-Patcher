@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       framework_jar_url:
-        description: 'framework.jar dosyasını indirmek için URL'
+        description: 'framework.jar için URL'
         required: true
       services_jar_url:
-        description: 'services.jar dosyasını indirmek için URL'
+        description: 'services.jar için URL'
         required: true
       miui_services_jar_url:
-        description: 'miui-services.jar dosyasını indirmek için URL'
+        description: 'miui-services.jar için URL'
         required: true
       android_api_level:
         description: 'Android API seviyesi'
