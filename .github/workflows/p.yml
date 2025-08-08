@@ -1,7 +1,0 @@
-- name: List tools folder contents
-  run: ls -l ./tools
-
-- name: Use smali & baksmali jars from repo
-  run: |
-    cp ./tools/smali.jar .
-    cp ./tools/baksmali.jar .
