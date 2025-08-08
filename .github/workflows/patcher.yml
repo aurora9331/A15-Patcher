@@ -221,12 +221,12 @@ jobs:
 
     - name: Çıktıyı zip olarak oluştur
       run: |
-        timestamp=$(date +"_%Y%m%d%H%M%S")
-        zip -r "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" system system_ext
-        mkdir -p out
-        chmod +w "${{ env.device_name }}_${{ env.version }}${timestamp}.zip"
-        mv "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" out/
-        echo "timestamp=${timestamp}" >> $GITHUB_ENV
+       timestamp=$(TZ="Europe/Istanbul" date +"_%d-%m-%Y_%H%M%S")
+       zip -r "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" system system_ext
+       mkdir -p out
+       chmod +w "${{ env.device_name }}_${{ env.version }}${timestamp}.zip"
+       mv "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" out/
+       echo "timestamp=${timestamp}" >> $GITHUB_ENV
 
     - name: Sürüm Notları Oluştur
       run: |
