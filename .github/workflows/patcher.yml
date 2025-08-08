@@ -1,4 +1,4 @@
-name: A15-Patcher
+name: Framework Yama Aracı
 
 on:
   workflow_dispatch:
