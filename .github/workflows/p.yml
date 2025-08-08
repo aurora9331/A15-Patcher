@@ -1,62 +1,7 @@
-name: Framework Patch Only
+- name: List tools folder contents
+  run: ls -l ./tools
 
-on:
-  workflow_dispatch:
-    inputs:
-      framework_jar_url:
-        description: 'URL to download framework.jar'
-        required: true
-      android_api_level:
-        description: 'Android API level'
-        required: true
-        default: '35'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
-
-      - name: Download framework.jar
-        run: |
-          curl -L -o framework.jar "${{ github.event.inputs.framework_jar_url }}"
-
-      - name: Extract framework.jar
-        run: |
-          7z x framework.jar -oframework
-
-      - name: Decompile DEX files
-        run: |
-          if [ -f framework/classes.dex ]; then
-            java -jar tools/baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
-          fi
-
-      - name: Patch smali files (Framework Only)
-        run: |
-          python3 framework_patch.py
-
-      - name: Recompile DEX files
-        run: |
-          if [ -d classes ]; then
-            java -jar tools/smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
-          fi
-
-      - name: Rebuild framework.jar
-        run: |
-          (cd framework && 7z a -tzip ../framework_patched.zip *)
-
-      - name: Align the jar
-        run: |
-          zipalign -f -p -v -z 4 framework_patched.zip aligned_framework.jar
-
-      - name: Output Patched Jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: patched-framework
-          path: aligned_framework.jar
+- name: Use smali & baksmali jars from repo
+  run: |
+    cp ./tools/smali.jar .
+    cp ./tools/baksmali.jar .
