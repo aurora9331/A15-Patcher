@@ -1,26 +1,26 @@
-name: Modify Framework and Services
+name: Framework ve Servisleri Düzenle
 
 on:
   workflow_dispatch:
     inputs:
       framework_jar_url:
-        description: 'URL to download framework.jar'
+        description: 'framework.jar dosyasını indirmek için URL'
         required: true
       services_jar_url:
-        description: 'URL to download services.jar'
+        description: 'services.jar dosyasını indirmek için URL'
         required: true
       miui_services_jar_url:
-        description: 'URL to download miui-services.jar'
+        description: 'miui-services.jar dosyasını indirmek için URL'
         required: true
       android_api_level:
-        description: 'Android API level'
+        description: 'Android API seviyesi'
         required: true
         default: '35'
       custom_device_name:
-        description: 'Custom device name'
+        description: 'Özel cihaz adı'
         required: true
       custom_version:
-        description: 'Custom version'
+        description: 'Özel sürüm'
         required: true
 
 jobs:
@@ -32,22 +32,22 @@ jobs:
       actions: write
 
     steps:
-    - name: Checkout repository
+    - name: Depoyu klonla
       uses: actions/checkout@v4
 
-    - name: Set up Java
+    - name: Java Kur
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    - name: Install dependencies
+    - name: Bağımlılıkları Yükle
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-11-jdk zipalign p7zip-full python3 aria2 jq
         pip install gdown
 
-    - name: Download and validate JARs
+    - name: JAR Dosyalarını İndir ve Doğrula
       run: |
         curl -L -C - -o framework.jar "${{ github.event.inputs.framework_jar_url }}"
         curl -L -C - -o services.jar "${{ github.event.inputs.services_jar_url }}"
@@ -55,138 +55,138 @@ jobs:
         for jar in framework.jar services.jar miui-services.jar; do
           file_size=$(stat -c%s "$jar")
           if [ $file_size -lt 2000000 ]; then
-            echo "Error: $jar is too small. Download might have failed." >&2
+            echo "Hata: $jar çok küçük. İndirme başarısız olabilir." >&2
             exit 1
           fi
         done
 
-    - name: Use smali & baksmali jars from repo
+    - name: smali & baksmali (araçlarını) repodan kullan
       run: |
         cp ./tools/smali.jar .
         cp ./tools/baksmali.jar .
 
-    - name: Extract framework.jar
+    - name: framework.jar Dosyasını Çıkart
       run: 7z x framework.jar -oframework
 
-    - name: Extract services.jar
+    - name: services.jar Dosyasını Çıkart
       run: 7z x services.jar -oservices
 
-    - name: Extract miui-services.jar
+    - name: miui-services.jar Dosyasını Çıkart
       run: 7z x miui-services.jar -omiui_services
 
-    - name: Decompile framework dex files if available
+    - name: framework dex dosyalarını decompile et (varsa)
       run: |
         if [ -f framework/classes.dex ]; then
           java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} framework/classes.dex -o classes
         else
-          echo "framework/classes.dex not found, skipping decompilation."
+          echo "framework/classes.dex bulunamadı, decompile atlanıyor."
         fi
         for i in {2..5}; do
           if [ -f "framework/classes${i}.dex" ]; then
             java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "framework/classes${i}.dex" -o "classes${i}"
           else
-            echo "framework/classes${i}.dex not found, skipping decompile."
+            echo "framework/classes${i}.dex bulunamadı, atlanıyor."
           fi
         done
 
-    - name: Decompile services dex files if available
+    - name: services dex dosyalarını decompile et (varsa)
       run: |
         if [ -f services/classes.dex ]; then
           java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} services/classes.dex -o services_classes
         else
-          echo "services/classes.dex not found, skipping decompilation."
+          echo "services/classes.dex bulunamadı, decompile atlanıyor."
         fi
         for i in {2..5}; do
           if [ -f "services/classes${i}.dex" ]; then
             java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} "services/classes${i}.dex" -o "services_classes${i}"
           else
-            echo "services/classes${i}.dex not found, skipping decompile."
+            echo "services/classes${i}.dex bulunamadı, atlanıyor."
           fi
         done
 
-    - name: Decompile miui-services dex file
+    - name: miui-services dex dosyasını decompile et
       run: |
         java -jar baksmali.jar d -a ${{ github.event.inputs.android_api_level }} miui_services/classes.dex -o miui_services_classes
 
-    - name: Backup smali files
+    - name: smali dosyalarını yedekle
       run: |
-        cp -r classes classes_backup || echo "classes directory not found, skipping backup."
-        cp -r classes2 classes2_backup || echo "classes2 directory not found, skipping backup."
-        cp -r classes3 classes3_backup || echo "classes3 directory not found, skipping backup."
-        cp -r classes4 classes4_backup || echo "classes4 directory not found, skipping backup."
-        cp -r classes5 classes5_backup || echo "classes5 directory not found, skipping backup."
-        cp -r services_classes services_classes_backup || echo "services_classes directory not found, skipping backup."
-        cp -r services_classes2 services_classes2_backup || echo "services_classes2 directory not found, skipping backup."
-        cp -r services_classes3 services_classes3_backup || echo "services_classes3 directory not found, skipping backup."
-        cp -r services_classes4 services_classes4_backup || echo "services_classes4 directory not found, skipping backup."
-        cp -r services_classes5 services_classes5_backup || echo "services_classes5 directory not found, skipping backup."
+        cp -r classes classes_backup || echo "classes dizini bulunamadı, yedeklenmiyor."
+        cp -r classes2 classes2_backup || echo "classes2 dizini bulunamadı, yedeklenmiyor."
+        cp -r classes3 classes3_backup || echo "classes3 dizini bulunamadı, yedeklenmiyor."
+        cp -r classes4 classes4_backup || echo "classes4 dizini bulunamadı, yedeklenmiyor."
+        cp -r classes5 classes5_backup || echo "classes5 dizini bulunamadı, yedeklenmiyor."
+        cp -r services_classes services_classes_backup || echo "services_classes dizini bulunamadı, yedeklenmiyor."
+        cp -r services_classes2 services_classes2_backup || echo "services_classes2 dizini bulunamadı, yedeklenmiyor."
+        cp -r services_classes3 services_classes3_backup || echo "services_classes3 dizini bulunamadı, yedeklenmiyor."
+        cp -r services_classes4 services_classes4_backup || echo "services_classes4 dizini bulunamadı, yedeklenmiyor."
+        cp -r services_classes5 services_classes5_backup || echo "services_classes5 dizini bulunamadı, yedeklenmiyor."
         cp -r miui_services_classes miui_services_classes_backup
 
-    - name: Modify framework smali
+    - name: framework smali dosyalarını düzenle
       run: |
         python3 framework_patch.py "${{ github.event.inputs.core }}"
 
-    - name: Modify services smali
+    - name: services smali dosyalarını düzenle
       run: |
         python3 services_patch.py "${{ github.event.inputs.core }}"
 
-    - name: Modify miui-services smali files
+    - name: miui-services smali dosyalarını düzenle
       run: |
         python3 miui-service_Patch.py
 
-    - name: Recompile framework dex files
+    - name: framework dex dosyalarını yeniden derle
       run: |
         if [ -d classes ]; then
           java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} classes -o framework/classes.dex
         else
-          echo "classes directory not found, skipping recompilation."
+          echo "classes dizini bulunamadı, derleme atlanıyor."
         fi
         for i in {2..5}; do
           if [ -d "classes$i" ]; then
             java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "classes$i" -o "framework/classes$i.dex"
           else
-            echo "classes$i directory not found, skipping recompilation."
+            echo "classes$i dizini bulunamadı, derleme atlanıyor."
           fi
         done
 
-    - name: Recompile services dex files
+    - name: services dex dosyalarını yeniden derle
       run: |
         if [ -d services_classes ]; then
           java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} services_classes -o services/classes.dex
         else
-          echo "services_classes directory not found, skipping recompilation."
+          echo "services_classes dizini bulunamadı, derleme atlanıyor."
         fi
         for i in {2..5}; do
           if [ -d "services_classes$i" ]; then
             java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} "services_classes$i" -o "services/classes$i.dex"
           else
-            echo "services_classes$i directory not found, skipping recompilation."
+            echo "services_classes$i dizini bulunamadı, derleme atlanıyor."
           fi
         done
 
-    - name: Recompile miui-services dex file
+    - name: miui-services dex dosyasını yeniden derle
       run: |
         java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
 
-    - name: Recompile framework.jar
+    - name: framework.jar dosyasını yeniden oluştur
       run: |
         cd framework
         7z a -tzip -mx=0 ../framework_new.zip *
         cd ..
 
-    - name: Recompile services.jar
+    - name: services.jar dosyasını yeniden oluştur
       run: |
         cd services
         7z a -tzip -mx=0 ../services_new.zip *
         cd ..
 
-    - name: Recompile miui-services.jar
+    - name: miui-services.jar dosyasını yeniden oluştur
       run: |
         cd miui_services
         7z a -tzip -mx=0 ../miui_services_new.zip *
         cd ..
 
-    - name: Align the zips
+    - name: Ziplere hizalama (align) uygula
       run: |
         zipalign -f -p -v -z 4 framework_new.zip aligned_framework.jar
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
@@ -200,7 +200,7 @@ jobs:
         cp aligned_services.jar system/system/framework/services.jar
         cp aligned_miui_services.jar system_ext/framework/miui-services.jar
 
-    - name: Create Version From Link
+    - name: Sürümü Linkten Oluştur
       run: |
         if [ -z "${{ github.event.inputs.custom_version }}" ]; then
           framework_url="${{ github.event.inputs.framework_jar_url }}"
@@ -219,7 +219,7 @@ jobs:
         echo "version=${version}"
         echo "device_name=${device_name}"
 
-    - name: Zip output
+    - name: Çıktıyı zip olarak oluştur
       run: |
         timestamp=$(date +"_%Y%m%d%H%M%S")
         zip -r "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" system system_ext
@@ -228,14 +228,14 @@ jobs:
         mv "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" out/
         echo "timestamp=${timestamp}" >> $GITHUB_ENV
 
-    - name: Create Release Notes
+    - name: Sürüm Notları Oluştur
       run: |
-        echo "## Release Notes" > release_notes.txt
-        echo "- Built modified jars from commit ${{ github.sha }}" >> release_notes.txt
-        echo "- Version: ${{ env.version }}" >> release_notes.txt
+        echo "## Sürüm Notları" > release_notes.txt
+        echo "- ${{ github.sha }} commitinden oluşturuldu" >> release_notes.txt
+        echo "- Sürüm: ${{ env.version }}" >> release_notes.txt
         echo "- Android Sürümü: ${{ github.event.inputs.android_api_level }}" >> release_notes.txt
 
-    - name: Create Release
+    - name: Sürüm Oluştur
       uses: ncipollo/release-action@v1
       with:
         artifacts: out/*
