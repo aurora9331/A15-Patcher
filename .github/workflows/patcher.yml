@@ -62,8 +62,8 @@ jobs:
 
     - name: Use smali & baksmali jars from repo
       run: |
-       cp ./tools/smali.jar .
-       cp ./tools/baksmali.jar .
+        cp ./tools/smali.jar .
+        cp ./tools/baksmali.jar .
 
     - name: Extract framework.jar
       run: 7z x framework.jar -oframework
@@ -167,7 +167,7 @@ jobs:
     - name: Recompile miui-services dex file
       run: |
         java -jar smali.jar a -a ${{ github.event.inputs.android_api_level }} miui_services_classes -o miui_services/classes.dex
-        
+
     - name: Recompile framework.jar
       run: |
         cd framework
@@ -192,7 +192,7 @@ jobs:
         zipalign -f -p -v -z 4 services_new.zip aligned_services.jar
         zipalign -f -p -v -z 4 miui_services_new.zip aligned_miui_services.jar
 
-    - name: Copy aligned jars to Magisk module
+    - name: Klasörleri oluştur ve jar dosyalarını kopyala
       run: |
         mkdir -p system/system/framework
         mkdir -p system_ext/framework
@@ -219,16 +219,14 @@ jobs:
         echo "version=${version}"
         echo "device_name=${device_name}"
 
-    - name: Zip Magisk module
+    - name: Zip output
       run: |
-       cd magisk_module
-       timestamp=$(date +"_%Y%m%d%H%M%S")
-       zip -r ../${{ env.device_name }}_${{ env.version }}${timestamp}.zip *
-       cd ..
-       mkdir -p out
-       chmod +w ${{ env.device_name }}_${{ env.version }}${timestamp}.zip
-       mv ${{ env.device_name }}_${{ env.version }}${timestamp}.zip out/
-       echo "timestamp=${timestamp}" >> $GITHUB_ENV
+        timestamp=$(date +"_%Y%m%d%H%M%S")
+        zip -r "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" system system_ext
+        mkdir -p out
+        chmod +w "${{ env.device_name }}_${{ env.version }}${timestamp}.zip"
+        mv "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" out/
+        echo "timestamp=${timestamp}" >> $GITHUB_ENV
 
     - name: Create Release Notes
       run: |
@@ -240,10 +238,10 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-          artifacts: out/*
-          tag: ${{ env.version }}
-          name: ${{ env.device_name }}_${{ env.version }}
-          allowUpdates: true
-          makeLatest: true
-          bodyFile: release_notes.txt
-          token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: out/*
+        tag: ${{ env.version }}
+        name: ${{ env.device_name }}_${{ env.version }}
+        allowUpdates: true
+        makeLatest: true
+        bodyFile: release_notes.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
