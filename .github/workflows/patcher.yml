@@ -221,7 +221,7 @@ jobs:
 
     - name: Çıktıyı zip olarak oluştur
       run: |
-       timestamp=$(TZ="Europe/Istanbul" date +"_%d-%m-%Y_%H%M%S")
+       timestamp=$(TZ="Europe/Istanbul" date +"-%d.%m.%Y-%H:%M:%S")
        zip -r "${{ env.device_name }}_${{ env.version }}${timestamp}.zip" system system_ext
        mkdir -p out
        chmod +w "${{ env.device_name }}_${{ env.version }}${timestamp}.zip"
