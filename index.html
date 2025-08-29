@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>A15 Patcher Demo Yükleyici</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { min-height:100vh; background:linear-gradient(120deg,#f5f7fa 0%,#c3cfe2 100%); margin:0; padding:30px; font-family:sans-serif }
+    .container { max-width:440px; margin:0 auto; background:#fff; padding:28px; border-radius:14px; box-shadow:0 8px 32px #8885a51a }
+    h2 { text-align:center; margin-bottom:18px }
+    input, button { font-size:15px }
+    input[type="text"] { width:100%; margin-bottom:10px; padding:7px; border-radius:6px; border:1px solid #ccc }
+    input[type="file"] { margin-bottom:10px }
+    button { width:100%; background:#6a82fb; color:#fff; font-weight:600; border:none; border-radius:7px; padding:10px 0; cursor:pointer }
+    .history { list-style:none; padding:0 }
+    .history li { padding:10px 0; border-bottom:1px solid #eee }
+    .footer { text-align:center; margin-top:30px; color:#999 }
+    .desc { font-size:13px }
+    .filelink { font-size:13px }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>A15 Patcher Demo Yükleyici</h2>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" />
+      <input type="text" id="nameInput" placeholder="İsim*" />
+      <input type="text" id="descInput" placeholder="Açıklama" />
+      <button type="submit" id="uploadBtn">Yükle</button>
+    </form>
+    <hr style="margin:24px 0" />
+    <h4>Geçmiş</h4>
+    <ul class="history" id="historyList"></ul>
+  </div>
+  <div class="footer">Tamamen statik demo – Sunucu veya kurulum gerekmez.</div>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const nameInput = document.getElementById('nameInput');
+    const descInput = document.getElementById('descInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const historyList = document.getElementById('historyList');
+
+    let uploads = [];
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      const name = nameInput.value.trim();
+      const desc = descInput.value.trim();
+      if (!file || !name) {
+        alert('Lütfen isim ve dosya seçin!');
+        return;
+      }
+      uploadBtn.disabled = true;
+      uploadBtn.innerText = "Yükleniyor...";
+      setTimeout(() => {
+        const url = URL.createObjectURL(file);
+        const entry = {
+          filename: file.name,
+          name,
+          desc,
+          time: new Date().toISOString(),
+          url
+        };
+        uploads.unshift(entry);
+        renderHistory();
+        nameInput.value = "";
+        descInput.value = "";
+        fileInput.value = "";
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Yükle";
+      }, 600);
+    };
+
+    function renderHistory() {
+      historyList.innerHTML = uploads.length ? uploads.map(item =>
+        `<li>
+          <b>${item.name}</b> <span style="color:#888">(${new Date(item.time).toLocaleString()})</span><br>
+          <span class="desc">${item.desc || ""}</span><br>
+          <a class="filelink" href="${item.url}" target="_blank">Dosyayı Görüntüle</a>
+        </li>`
+      ).join("") : '<div style="color:#888">Henüz yükleme yok.</div>';
+    }
+    renderHistory();
+  </script>
+</body>
+</html>
