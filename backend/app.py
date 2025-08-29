@@ -17,19 +17,26 @@ from flask_cors import CORS
 
 # Import existing patch modules
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+
 try:
     import framework_patch
     import services_patch
-    import importlib.util
     
     # Load miui-service_Patch.py dynamically
-    spec = importlib.util.spec_from_file_location("miui_service_patch", "../miui-service_Patch.py")
-    if spec and spec.loader:
-        miui_service_patch = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(miui_service_patch)
+    miui_patch_path = os.path.join(parent_dir, "miui-service_Patch.py")
+    if os.path.exists(miui_patch_path):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("miui_service_patch", miui_patch_path)
+        if spec and spec.loader:
+            miui_service_patch = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(miui_service_patch)
+        else:
+            miui_service_patch = None
     else:
         miui_service_patch = None
+        
 except ImportError as e:
     logging.error(f"Failed to import patch modules: {e}")
     framework_patch = None
