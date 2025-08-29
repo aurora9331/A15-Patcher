@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İşlem Sonucu - A15 Framework Patcher</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-cogs me-2"></i>
+                A15 Framework Patcher
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home me-1"></i>Ana Sayfa
+                </a>
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history me-1"></i>Geçmiş
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% if success %}
+                <div class="card border-success shadow-lg">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            İşlem Başarılı!
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <i class="fas fa-thumbs-up me-2"></i>
+                            {{ entry.message }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-info-circle me-2"></i>Dosya Bilgileri</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Proje Adı:</strong>
+                                        <span>{{ entry.name }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Dosya Adı:</strong>
+                                        <span>{{ entry.filename }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Yükleme Zamanı:</strong>
+                                        <span>{{ entry.upload_time.split('T')[0] }} {{ entry.upload_time.split('T')[1].split('.')[0] }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-comment me-2"></i>Açıklama</h5>
+                                <div class="bg-light p-3 rounded">
+                                    {{ entry.description if entry.description else 'Açıklama girilmemiş' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h5><i class="fas fa-download me-2"></i>İndirme</h5>
+                            {% if entry.get('processed_file') %}
+                            <div class="alert alert-success">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-file-archive me-2"></i>
+                                        Yamalı dosyanız hazır!
+                                    </div>
+                                    <a href="/download/{{ entry.processed_file.split('/')[-1] }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-download me-1"></i>İndir
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-4">
+                            <h5><i class="fas fa-info-circle me-2"></i>Sonraki Adımlar</h5>
+                            <div class="alert alert-info">
+                                <ul class="mb-0">
+                                    <li>Dosyanız başarıyla yüklendi ve işlendi</li>
+                                    <li>Yamalı dosyayı yukarıdaki "İndir" butonuyla indirebilirsiniz</li>
+                                    <li>İşlem geçmişinizi görmek için Geçmiş sayfasını ziyaret edin</li>
+                                    <li>Yamalı dosyayı cihazınıza yüklemek için ADB kullanın</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card border-danger shadow-lg">
+                    <div class="card-header bg-danger text-white">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            İşlem Başarısız!
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            {{ entry.message }}
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5><i class="fas fa-lightbulb me-2"></i>Öneriler</h5>
+                            <div class="alert alert-warning">
+                                <ul class="mb-0">
+                                    <li>Dosyanızın geçerli bir .jar dosyası olduğundan emin olun</li>
+                                    <li>Dosya boyutunun 500MB'den küçük olduğunu kontrol edin</li>
+                                    <li>İnternet bağlantınızı kontrol edin</li>
+                                    <li>Tekrar deneyebilir veya farklı bir dosya yükleyebilirsiniz</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        {% if entry %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-info-circle me-2"></i>Denenen Dosya</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Proje Adı:</strong>
+                                        <span>{{ entry.name }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Dosya Adı:</strong>
+                                        <span>{{ entry.filename }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <strong>Deneme Zamanı:</strong>
+                                        <span>{{ entry.upload_time.split('T')[0] }} {{ entry.upload_time.split('T')[1].split('.')[0] }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="text-center mt-4">
+                    <a href="/" class="btn btn-primary btn-lg me-3">
+                        <i class="fas fa-plus me-2"></i>
+                        Yeni Dosya Yükle
+                    </a>
+                    <a href="/history" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-history me-2"></i>
+                        Geçmişi Görüntüle
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-code me-2"></i>
+                A15 Framework Patcher - Modern Android Framework Yamalama Aracı
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
